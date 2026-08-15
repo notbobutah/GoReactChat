@@ -286,6 +286,37 @@ function Sidebar() {
         </p>
       </div>
 
+      {/*
+        The chat is the point, but a recruiter still has to forward something to
+        a hiring manager and paste it into an applicant tracking system — so the
+        underlying document has to be one click away, not a thing to ask for.
+        `download` names the file in their Downloads folder rather than leaving
+        it whatever the URL ends with.
+      */}
+      <div className="space-y-2 text-xs">
+        <p className="font-medium text-black/70 dark:text-white/70">Résumé</p>
+        <a
+          href="/Robert-MacKay-Resume.pdf"
+          download
+          className="inline-flex items-center gap-1.5 text-black/60 underline decoration-black/20 underline-offset-2 hover:text-black hover:decoration-black/60 dark:text-white/60 dark:decoration-white/25 dark:hover:text-white"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="size-3.5 shrink-0"
+          >
+            <path d="M8 2v8m0 0L5 7m3 3 3-3" />
+            <path d="M2.5 11.5v1a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1v-1" />
+          </svg>
+          Download PDF
+        </a>
+      </div>
+
       <div className="mt-auto space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40">
         <p>Go · connect-go (gRPC / gRPC-Web / Connect)</p>
         <p>Next.js · React · streaming over fetch</p>

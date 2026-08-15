@@ -98,6 +98,19 @@ resume-md:
 	cd $(SERVER) && $(GO) run ./cmd/pdf2md "$(PDF)" > "$(basename $(PDF)).md"
 	@echo "wrote $(basename $(PDF)).md — review it; the converter is best-effort"
 
+## resume-public: refresh the downloadable PDF in web/public from data/
+# data/ is the source of truth — the corpus the model answers from is loaded
+# from there, and web/public/ only holds the copy the browser serves. Without a
+# target for this the two drift apart silently, and the file a recruiter
+# downloads stops matching the answers they were just given.
+# PDF is deliberately not reused here: it is relative to $(SERVER), because
+# resume-md cds there before running the converter. This target runs from the
+# repository root, so it needs its own root-relative path.
+RESUME_PDF ?= data/MacKay-Resume-2026-Comprehensive.pdf
+resume-public:
+	cp "$(RESUME_PDF)" $(WEB)/public/Robert-MacKay-Resume.pdf
+	@echo "copied $(RESUME_PDF) -> $(WEB)/public/Robert-MacKay-Resume.pdf"
+
 ## rag-check: print what retrieval returns for sample questions (needs Ollama)
 rag-check:
 	cd $(SERVER) && $(GO) test ./internal/rag -run TestLiveRetrieval -v
@@ -159,6 +172,6 @@ deploy:
 	kubectl -n dev-next rollout status deployment/lumi-go-web --timeout=5m
 
 .PHONY: help generate lint-proto build test vet db-up db-down migrate dev-server dev-offline dev-web web-build \
-	refs resume-md rag-check \
+	refs resume-md resume-public rag-check \
 	image image-web image-run image-web-run ghcr-login image-push image-push-multi \
 	deploy-dry-run deploy

@@ -1,6 +1,9 @@
 GO       ?= go
 BUF      ?= buf
-DB_URL   ?= postgres://lumi:lumi@localhost:5433/lumi?sslmode=disable
+# Defaults to the local docker Postgres, but an exported DATABASE_URL wins — so
+# pointing at a hosted database (Neon, RDS) needs no edit here and no credential
+# in the repository.
+DB_URL   ?= $(if $(DATABASE_URL),$(DATABASE_URL),postgres://lumi:lumi@localhost:5433/lumi?sslmode=disable)
 SERVER   := server
 WEB      := web
 
@@ -60,6 +63,16 @@ migrate:
 ## dev-server: run the backend against local Postgres
 dev-server:
 	cd $(SERVER) && DATABASE_URL="$(DB_URL)" $(GO) run ./cmd/lumid
+
+## migrate-remote: apply every migration to $DATABASE_URL (hosted Postgres)
+# `migrate` talks to the local container; this one uses a local psql client
+# against whatever DB_URL points at, so it works for Neon and friends.
+migrate-remote:
+	@test -n "$(DB_URL)" || { echo "set DATABASE_URL first"; exit 1; }
+	@for f in $$(ls migrations/*.sql | sort); do \
+		echo "applying $$f"; \
+		psql "$(DB_URL)" -q -v ON_ERROR_STOP=1 -f $$f || exit 1; \
+	done
 
 ## dev-offline: run the backend with no database and no model calls
 dev-offline:

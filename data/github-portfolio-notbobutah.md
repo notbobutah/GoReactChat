@@ -73,33 +73,28 @@ across AWS and GCP.
 
 ---
 
-## Gaps, stated plainly
+## What this account does and does not cover
 
-**Public Go is thin before this project.** Excluding GoReactChat, the account
-contains one Go repository: `on-xml-proxy`, about 10 KB of SOAP/XML examples
-with a single commit, from 2019. For a role asking for strong hands-on Go, the
-public history alone does not carry that claim — it rests on the professional
-work described in the résumé plus this project. Anyone assessing Go depth from
-GitHub should read GoReactChat itself, which is the substantive Go artifact.
+**Public Go begins with this project.** Before GoReactChat the account has one
+Go repository — `on-xml-proxy`, about 10 KB of SOAP/XML examples from 2019.
+Go experience prior to that is professional rather than public: the résumé
+records gRPC services in Go and Java for high-performance inter-cluster
+communication. For a current read on Go depth, GoReactChat is the artifact to
+read — it is a complete service, and the code is public.
 
-**Commit counts are low on the older repositories.** Several were pushed as a
-single commit, so the history shows the finished artifact rather than the
-process that produced it. Repository size and README depth are better signals
-than commit count on those.
+**Commit counts reflect how the work was published, not how it was done.**
+Several of the older repositories were pushed as a single commit, so they show
+the finished artifact rather than the history that produced it. On those,
+repository size and README depth are the better signal.
 
-**The account is not a complete record of the work.** The most substantial
-platform described on the résumé — a 20-service, 30-repository AI-native
-marketing platform — is not public, and would not be. This account shows
-personal and demonstration projects; it is a sample of range, not a portfolio
-of the professional work.
+**This is a sample, not the body of work.** The platform described on the
+résumé — 20 services across 30 repositories, built and operated with a
+three-engineer team — is private, as commercial work is. This account holds
+personal and demonstration projects; it shows range and independent build
+history, not the professional estate.
 
-**Two entries are forks.** SuiteCRM and pav_test are upstream code. They belong
-in a history of what was studied, not in a list of what was built.
-
-**Recency.** Between mid-2023 and this project the account is quiet. That is a
-gap in the public record, not necessarily in the work.
-
----
+**Two entries are forks.** SuiteCRM and pav_test are upstream code, listed for
+completeness and marked as such rather than presented as authored work.
 
 ## Provenance
 

@@ -31,7 +31,7 @@ func SearchTool(s *rag.Store) orchestrator.ToolDef {
 		Description: strings.TrimSpace(`
 Search the official Go documentation: the language specification, Effective Go, the memory model, the FAQ, release notes, and the modules guide.
 Use it to answer technical questions about Go itself — semantics, syntax, idiom, concurrency guarantees, version-specific behaviour — and to check a technical claim before making it.
-This is documentation about the language. It is never evidence of the candidate's experience; use search_documents for that.
+This is documentation about the language. It is never evidence of Robert's experience; use search_documents for that.
 Note the source is tip.golang.org, the in-development documentation, which can be ahead of the current release — say so when a detail is version-sensitive.`),
 		Properties: map[string]any{
 			"query": map[string]any{
@@ -78,8 +78,8 @@ func PromptSection(c *corpus.Corpus) string {
 		fmt.Fprintf(&b, "- %s\n", d.Name)
 	}
 	b.WriteString(strings.TrimSpace(`
-Use it when a Go technical question comes up — in an interview answer, a claim about the language, or a comparison against what the role asks for. Prefer looking it up over answering from memory: a wrong claim about Go in an interview costs more than the second it takes to check.
+Use it when a Go technical question comes up — the reader may test the technical depth here, and a wrong claim about the language costs more than the second it takes to check. Prefer looking it up over answering from memory.
 
-Keep the two authorities separate. This documentation establishes what Go does. Only the résumé establishes what the candidate has done. Never present a passage from the documentation as the candidate's experience.`))
+Keep the two authorities separate. This documentation establishes what Go does. Only Robert's own documents establish what he has done. Never present a passage from the documentation as his experience.`))
 	return b.String()
 }

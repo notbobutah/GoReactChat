@@ -31,8 +31,8 @@ func SearchTool(s *Store) orchestrator.ToolDef {
 	return orchestrator.ToolDef{
 		Name: ToolName,
 		Description: strings.TrimSpace(`
-Search the candidate's documents: the résumé, the job description, and the README of a codebase the candidate built and shipped.
-Call this before answering anything about the candidate's experience, about what the role requires, or about what the candidate has actually delivered — you do not have the documents in context, and answering from memory is how fabrications happen.
+Search Robert's documents: his résumé, the job description under consideration, and documentation of systems he designed and shipped.
+Call this before answering anything about his background, about what the role requires, or about what he has delivered — you do not have the documents in context, and answering from memory is how fabrications happen.
 Search with the words that would appear in the document, not the user's phrasing: for "am I senior enough?", search for titles and years of experience. Call it several times with different wording when one search is thin.`),
 		Properties: map[string]any{
 			"query": map[string]any{
@@ -100,18 +100,18 @@ func SystemPrompt(c *corpus.Corpus, s *Store, extras ...string) string {
 	b.WriteString("` tool.\n\n")
 
 	b.WriteString("Retrieval protocol:\n")
-	b.WriteString("- Search before answering any question about the candidate's background or the role's requirements. Never answer either from memory or from earlier turns alone.\n")
-	b.WriteString("- A comparison question needs both sides: search the résumé and the job description before judging fit.\n")
+	b.WriteString("- Search before answering any question about Robert's background or the role's requirements. Never answer either from memory or from earlier turns alone.\n")
+	b.WriteString("- A fit question needs both sides: search the résumé (and his delivered work) as well as the job description before answering.\n")
 	b.WriteString("- Retrieval returns the closest passages, not everything. If the passages look thin or off-target, search again with different words before concluding the documents do not cover it.\n")
 	b.WriteString("- Cite the source filename and section when you use a passage.\n")
 	b.WriteString("- Technical questions about Go itself are a separate lookup — see the reference section below if one is listed.\n")
-	b.WriteString("- When a `project` document is listed below, it is the README of a codebase the candidate designed and shipped, and the reader can go and read that code. Cite it as delivered work — evidence of what they built and the decisions they made — and keep it distinct from the résumé's summary of it. It is not a substitute for the résumé on dates, employers, or titles.\n\n")
+	b.WriteString("- `project` documents describe systems Robert designed and shipped, and the reader can go and read the code. Cite them as delivered work — the strongest evidence available, because it is verifiable. Keep them distinct from the résumé, which is the authority on dates, employers and titles.\n\n")
 
 	b.WriteString(corpus.GroundingRules)
 
 	b.WriteString("\n\n# Indexed documents\n")
 	if c.Empty() {
-		b.WriteString("None. Say so if asked about the candidate or the role.\n")
+		b.WriteString("None. Say so if asked about Robert or the role.\n")
 		return b.String()
 	}
 	for _, d := range c.Documents {

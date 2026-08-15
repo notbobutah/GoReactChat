@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { authHeaders, chatClient, conversationId } from "@/lib/chat-client";
@@ -19,7 +20,7 @@ export function Chat() {
   const [streaming, setStreaming] = useState("");
   const [liveBlocks, setLiveBlocks] = useState<Block[]>([]);
   const [busy, setBusy] = useState(false);
-  const [title, setTitle] = useState("New conversation");
+  const [title] = useState("Robert MacKay — Sr. Golang / AI Developer");
   const [error, setError] = useState<string | null>(null);
 
   const convIdRef = useRef<string>("");
@@ -45,12 +46,9 @@ export function Chat() {
           })),
         );
 
-        // The title lives on the conversation row, not on the messages, so a
-        // reload has to read it back or the header regresses to "New
-        // conversation" for an already-titled thread.
-        const list = await chatClient.listConversations({ limit: 50 }, { headers: authHeaders() });
-        const current = list.conversations.find((c) => c.id === convIdRef.current);
-        if (current?.title) setTitle(current.title);
+        // Conversations are still auto-titled server-side (the rail will want
+        // it), but the header is an identity banner for a visitor evaluating
+        // Robert — not a label for their own thread. So it stays fixed.
       } catch {
         // No history yet.
       }
@@ -61,8 +59,8 @@ export function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
 
-  const send = useCallback(async () => {
-    const text = draft.trim();
+  const send = useCallback(async (raw: string) => {
+    const text = raw.trim();
     if (!text || busy) return;
 
     setDraft("");
@@ -110,7 +108,7 @@ export function Chat() {
             break;
           }
           case "conversationTitled": {
-            setTitle(event.event.value.title);
+            // Persisted server-side; the header stays the identity banner.
             break;
           }
           case "error": {
@@ -156,20 +154,29 @@ export function Chat() {
       abortRef.current = null;
       setBusy(false);
     }
-  }, [draft, busy]);
+  }, [busy]);
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-3xl flex-col">
+    <div className="mx-auto flex h-dvh w-full max-w-6xl">
+      <Sidebar />
+
+      <div className="flex min-w-0 flex-1 flex-col">
       <header className="flex items-baseline justify-between border-b border-black/10 px-6 py-4 dark:border-white/15">
         <h1 className="text-sm font-medium">{title}</h1>
-        <span className="font-mono text-xs text-black/40 dark:text-white/40">lumi-go · gRPC</span>
+        <span className="font-mono text-xs text-black/40 dark:text-white/40">
+          Go · gRPC · local RAG
+        </span>
       </header>
 
       <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
         {messages.length === 0 && !streaming && (
-          <p className="pt-16 text-center text-sm text-black/40 dark:text-white/40">
-            Ask Lumi something to start the conversation.
-          </p>
+          <div className="pt-16">
+            <p className="text-center text-sm text-black/40 dark:text-white/40">
+              Ask about Robert's experience against this role — his background,
+              what he has built, or how this application works.
+            </p>
+            <Suggestions onPick={(q) => void send(q)} disabled={busy} className="mt-6" />
+          </div>
         )}
 
         {messages.map((m) => (
@@ -189,16 +196,27 @@ export function Chat() {
         <div ref={bottomRef} />
       </div>
 
+      {messages.length > 0 && (
+        <Suggestions
+          onPick={(q) => void send(q)}
+          disabled={busy}
+          className="border-t border-black/10 px-6 pt-3 dark:border-white/15"
+          compact
+        />
+      )}
+
       <form
-        className="flex gap-2 border-t border-black/10 px-6 py-4 dark:border-white/15"
+        className={`flex gap-2 px-6 py-4 ${
+          messages.length > 0 ? "" : "border-t border-black/10 dark:border-white/15"
+        }`}
         onSubmit={(e) => {
           e.preventDefault();
-          void send();
+          void send(draft);
         }}
       >
         <input
           className="flex-1 rounded-lg border border-black/15 bg-transparent px-3 py-2 text-sm outline-none focus:border-black/40 dark:border-white/20 dark:focus:border-white/50"
-          placeholder="Message Lumi…"
+          placeholder="Ask about his Go experience, AI agent work, or this codebase…"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           disabled={busy}
@@ -221,7 +239,59 @@ export function Chat() {
           </button>
         )}
       </form>
+      </div>
     </div>
+  );
+}
+
+/**
+ * Sidebar — the standing context a visitor needs without asking: who this is,
+ * where the code lives, and what it is built from. The chat answers questions;
+ * this answers the ones nobody types.
+ *
+ * Hidden below `lg`, where the conversation should have the full width.
+ */
+function Sidebar() {
+  return (
+    <aside className="hidden w-72 shrink-0 flex-col gap-5 border-r border-black/10 px-6 py-6 lg:flex dark:border-white/15">
+      <Image
+        src="/pixar-pops.png"
+        alt="Robert MacKay"
+        width={240}
+        height={240}
+        priority
+        className="w-full rounded-xl object-cover"
+      />
+
+      <div className="space-y-1">
+        <p className="text-sm font-medium">Robert MacKay</p>
+        <p className="text-xs leading-relaxed text-black/50 dark:text-white/50">
+          CTO · Software Architect · AI-Native Platforms
+        </p>
+      </div>
+
+      <div className="space-y-2 text-xs">
+        <p className="font-medium text-black/70 dark:text-white/70">Source code</p>
+        <a
+          href="https://github.com/notbobutah/GoReactChat"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block break-all font-mono text-black/60 underline decoration-black/20 underline-offset-2 hover:text-black hover:decoration-black/60 dark:text-white/60 dark:decoration-white/25 dark:hover:text-white"
+        >
+          github.com/notbobutah/GoReactChat
+        </a>
+        <p className="leading-relaxed text-black/45 dark:text-white/45">
+          This application is the working sample: a Go backend answering over
+          gRPC, grounded in the résumé and the role.
+        </p>
+      </div>
+
+      <div className="mt-auto space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40">
+        <p>Go · connect-go (gRPC / gRPC-Web / Connect)</p>
+        <p>Next.js · React · streaming over fetch</p>
+        <p>Postgres · local embeddings · in-process vector search</p>
+      </div>
+    </aside>
   );
 }
 
@@ -262,6 +332,76 @@ function Bubble({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Suggestions — one-click questions for a visitor who has not been told what
+ * this thing can answer.
+ *
+ * Clicking sends immediately rather than filling the box: the reader is
+ * evaluating, not composing, so a chip that only pastes text asks them to take
+ * a second action for no gain. The questions map to the role's must-haves, so
+ * the obvious first click lands on the requirement the posting emphasises most.
+ */
+const SUGGESTIONS: { label: string; question: string }[] = [
+  {
+    label: "Production Go",
+    question: "Does he have production Go experience? Be specific about where and when.",
+  },
+  {
+    label: "AI agents",
+    question:
+      "Has he personally built AI agents, or only consumed LLM APIs? What is the evidence?",
+  },
+  {
+    label: "Fit for this role",
+    question:
+      "How does his background line up with the must-have skills in this job description?",
+  },
+  {
+    label: "How this app works",
+    question:
+      "How does this application work — the architecture, the streaming, and the retrieval?",
+  },
+  {
+    label: "Kubernetes & cloud",
+    question: "What is his experience with Kubernetes, containers and cloud infrastructure?",
+  },
+  {
+    label: "Recent work",
+    question: "What has he designed and shipped most recently?",
+  },
+];
+
+function Suggestions({
+  onPick,
+  disabled,
+  className = "",
+  compact = false,
+}: {
+  onPick: (question: string) => void;
+  disabled?: boolean;
+  className?: string;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`flex flex-wrap justify-center gap-2 ${className}`}>
+      {SUGGESTIONS.map((s) => (
+        <button
+          key={s.label}
+          type="button"
+          onClick={() => onPick(s.question)}
+          disabled={disabled}
+          title={s.question}
+          className={`rounded-full border border-black/15 text-black/70 transition hover:border-black/40 hover:text-black disabled:opacity-40 dark:border-white/20 dark:text-white/70 dark:hover:border-white/50 dark:hover:text-white ${
+            compact ? "px-3 py-1 text-[11px]" : "px-3.5 py-1.5 text-xs"
+          }`}
+        >
+          {s.label}
+        </button>
+      ))}
     </div>
   );
 }

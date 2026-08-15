@@ -1,0 +1,102 @@
+# The Next.js client. It holds no secrets and talks to nothing but the browser:
+# the API call goes from the visitor's browser to the same ingress host, not
+# from this pod. That is why there is no DATABASE_URL or model key here, and
+# why it can scale independently of the API.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lumi-go-web
+  namespace: dev-next
+  labels:
+    app: lumi-go-web
+    app.kubernetes.io/part-of: lumi-go
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lumi-go-web
+  template:
+    metadata:
+      labels:
+        app: lumi-go-web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        # uid 1000 — the `node` user in node:alpine.
+        runAsUser: 1000
+        runAsGroup: 1000
+      containers:
+        - name: web
+          image: ghcr.io/notbobutah/goreactchat/web:latest
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+          env:
+            # The standalone server reads both; the image sets them too, and
+            # they are repeated here so the listen address is visible in the
+            # manifest rather than only inside the Dockerfile.
+            - name: PORT
+              value: "3000"
+            - name: HOSTNAME
+              value: "0.0.0.0"
+          volumeMounts:
+            # next/image optimizes on first request and caches the result under
+            # .next/cache. With a read-only root and no writable cache the
+            # sidebar image 500s, so this is load-bearing, not hygiene.
+            - name: next-cache
+              mountPath: /app/.next/cache
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: next-cache
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+      imagePullSecrets:
+        - name: gh-registry-credentials
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lumi-go-web
+  namespace: dev-next
+  labels:
+    app: lumi-go-web
+    app.kubernetes.io/part-of: lumi-go
+spec:
+  selector:
+    app: lumi-go-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

@@ -32,6 +32,10 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...opting in for exactly one: .env.development holds no secret, only the local
+# port the Go service listens on, and it has to be committed or every checkout
+# has to rediscover why the dev page cannot reach the backend.
+!.env.development
 
 # vercel
 .vercel

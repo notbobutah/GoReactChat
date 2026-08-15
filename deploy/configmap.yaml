@@ -1,0 +1,64 @@
+# Non-secret runtime configuration for the dev-next deployment.
+#
+# Everything here is safe to read: the values that are not are in a Secret (see
+# secret.example.yaml). Splitting them this way means this file can be reviewed,
+# diffed and rolled back like code, which is the whole point of keeping the
+# deployment in the repository.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lumi-go-config
+  namespace: dev-next
+  labels:
+    app.kubernetes.io/part-of: lumi-go
+data:
+  # --- surface --------------------------------------------------------------
+  # One ingress host serves the page and the Connect endpoints, so the browser
+  # calls the API same-origin. This list is still set explicitly: the CORS
+  # middleware is what stands between a public endpoint and any other site
+  # spending this deployment's token budget from a visitor's browser.
+  ALLOWED_ORIGINS: "https://rob.expona.ai"
+
+  # --- storage --------------------------------------------------------------
+  STORE: "postgres"
+
+  # --- model ----------------------------------------------------------------
+  MODEL_CLIENT: "anthropic"
+  STRONG_MODEL: "claude-opus-5"
+  FAST_MODEL: "claude-haiku-4-5"
+  EFFORT: "medium"
+
+  # --- retrieval ------------------------------------------------------------
+  # Off in the cluster. Retrieval embeds locally through Ollama, and there is no
+  # Ollama here — with RAG=on the service would spend its boot discovering that
+  # and fall back anyway. Off is the same outcome, stated up front.
+  #
+  # The fallback is not a degraded mode: the corpus is small enough to inline in
+  # the system prompt, which costs tokens rather than answers. What is actually
+  # lost is the `search_go_docs` tool, since the Go documentation is far too
+  # large to inline. deploy/README.md has what it would take to turn this on.
+  RAG: "off"
+  EMBED_CACHE_DIR: ""
+
+  # --- limits ---------------------------------------------------------------
+  # This is a public endpoint with no sign-in, by design — it is a résumé, and
+  # putting a login in front of it defeats the purpose. The limits below are
+  # what stands in for authentication, so treat them as the security boundary
+  # rather than as tuning.
+  #
+  # TOKEN_BUDGET is the total this deployment may EVER spend, not a per-day
+  # figure: it is persisted in Postgres and survives restarts, so a crash loop
+  # cannot reset it. Raising it is a deliberate act.
+  TOKEN_BUDGET: "2000000"
+  # Requests per minute. GLOBAL is the one that binds — it pools every visitor
+  # into one bucket, so ten simultaneous readers cannot spend ten times as fast.
+  RATE_LIMIT: "6"
+  GLOBAL_RATE_LIMIT: "10"
+  RATE_LIMIT_WINDOW_SECONDS: "60"
+  # A budget is only as strong as its per-call ceiling: without this, one pasted
+  # document is a large single bite out of the total.
+  MAX_INPUT_CHARS: "2000"
+  # Every turn resends the whole thread, so an unbounded conversation costs more
+  # per turn than the last. This bounds that curve without needing to know who
+  # the visitor is.
+  MAX_MESSAGES_PER_CONVERSATION: "40"

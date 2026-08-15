@@ -1,8 +1,13 @@
-# Build context is `server/` — everything the binary needs (go.mod, gen/,
-# internal/, cmd/) lives there, so the client and its node_modules never enter
-# the build context.
+# Build context is the REPOSITORY ROOT, not `server/`.
 #
-#   docker build -f server/Dockerfile -t ghcr.io/notbobutah/goreactchat/lumid server
+# The context was `server/` while the image only had to carry a binary. It no
+# longer does: this service answers questions about documents, and a deployed
+# container with no `data/` boots into the generic prompt and quietly stops
+# being the thing it advertises. The corpus is part of the artifact, so it has
+# to be inside the build context. `.dockerignore` at the root keeps `web/` and
+# its node_modules out, so the context stays small.
+#
+#   docker build -f server/Dockerfile -t ghcr.io/notbobutah/goreactchat/lumid .
 
 # --- build ------------------------------------------------------------------
 # Pinned to the toolchain in go.mod. --platform=$BUILDPLATFORM keeps the
@@ -13,10 +18,10 @@ FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS build
 WORKDIR /src
 
 # Dependencies first, so a source-only change reuses this layer.
-COPY go.mod go.sum ./
+COPY server/go.mod server/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY server/ ./
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -44,11 +49,25 @@ LABEL org.opencontainers.image.description="lumi-go chat backend (gRPC / Connect
 
 COPY --from=build /out/lumid /usr/local/bin/lumid
 
+# The grounding corpus and the README that stands as evidence of delivered work.
+# Both are read once at boot and never written, which is why they can live on a
+# read-only root filesystem. `data/.embeddings` is excluded by .dockerignore:
+# the vector cache is only useful next to a reachable embedder, and there is no
+# Ollama in the cluster (see deploy/README.md).
+COPY data/ /app/data/
+COPY README.md /app/README.md
+
 # The server binds 127.0.0.1 by default — correct for a local run, unreachable
 # from outside a container. Bind all interfaces here instead; the container
 # boundary is the thing limiting exposure.
+#
+# DATA_DIR and PROJECT_DOC default to `../data` and `../README.md`, which are
+# relative to running out of `server/`. Point them at the absolute paths above
+# so the corpus is found no matter what the working directory is.
 ENV HOST=0.0.0.0 \
-    PORT=8080
+    PORT=8080 \
+    DATA_DIR=/app/data \
+    PROJECT_DOC=/app/README.md
 
 EXPOSE 8080
 

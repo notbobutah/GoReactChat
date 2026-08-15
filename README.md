@@ -585,7 +585,8 @@ make dev-web
 | `web-build` | Production client build, including the TypeScript check. |
 | `refs` | Fetch the Go documentation into `data/reference/`. |
 | `resume-md` / `rag-check` | PDF → markdown; print what retrieval returns for sample questions. |
-| `image` / `image-run` / `image-push` / `image-push-multi` | Container build, local run, and registry push (§10). |
+| `image` / `image-web` / `image-run` / `image-web-run` / `image-push` / `image-push-multi` | Container build, local run, and registry push (§10). |
+| `deploy-dry-run` / `deploy` | Validate or apply `deploy/` against the `dev-next` cluster (§11). |
 
 ### Calling it by hand
 
@@ -613,19 +614,34 @@ curl -s -X POST localhost:8080/lumi.chat.v1.ChatService/ListConversations \
 
 ## 10. Container image
 
-`server/Dockerfile` builds the backend. The build context is `server/`, so the
-client and its `node_modules` never enter it.
+Two images, one per process:
+
+| Image | Dockerfile | Context | Contents |
+|---|---|---|---|
+| `…/lumid` | `server/Dockerfile` | repository root | static Go binary on distroless + the `data/` corpus + this README |
+| `…/web` | `web/Dockerfile` | `web/` | Next.js standalone bundle on `node:alpine` |
 
 ```bash
-make image                       # build for this host's architecture
-make image-run                   # run it: in-memory store, canned replies, :8080
+make image                       # backend, this host's architecture
+make image-web                   # client
+make image-run                   # run the backend: in-memory store, canned replies, :8080
+make image-web-run               # run the client read-only, :3000
 make image-push TAG=v0.1.0       # single-arch push
 make image-push-multi TAG=v0.1.0 # linux/amd64 + linux/arm64 in one manifest
 ```
 
-Default name: `ghcr.io/notbobutah/goreactchat/lumid` — lowercased, because
-ghcr.io rejects uppercase in image names. Override with
-`IMAGE=…`. `TAG` defaults to the short commit SHA.
+Default names: `ghcr.io/notbobutah/goreactchat/{lumid,web}` — lowercased,
+because ghcr.io rejects uppercase in image names. Override with `IMAGE=…` /
+`WEB_IMAGE=…`. `TAG` defaults to the short commit SHA.
+
+**The backend image builds from the repository root, not from `server/`.** It
+was `server/` while the image only had to carry a binary. It no longer does:
+this service answers questions about documents, and a container with no `data/`
+boots into the generic prompt and quietly stops being the thing it advertises.
+The corpus is part of the artifact, so it has to be inside the build context;
+`.dockerignore` at the root keeps `web/` and its `node_modules` out, so the
+context stays small. `DATA_DIR` and `PROJECT_DOC` are set to absolute paths in
+the image, since their defaults are relative to running out of `server/`.
 
 **Build decisions and why:**
 
@@ -638,6 +654,9 @@ ghcr.io rejects uppercase in image names. Override with
 | `USER nonroot` (uid 65532) | No root in the container; nothing in the image is writable by it. |
 | No `HEALTHCHECK` | There is no shell or curl to run one. Point the orchestrator's probe at `GET /health`. |
 | `-X main.version` | The boot log carries the version, so a running container traces back to its commit. |
+| Client image: `output: "standalone"` | Traces the exact files the server needs, so the runtime image ships no `node_modules` tree and no build toolchain. |
+| Client image: no `NEXT_PUBLIC_LUMI_URL` at build time | `NEXT_PUBLIC_*` is inlined into the bundle by `next build`. Baking a hostname would mean one image per environment; unset, the client resolves its base URL same-origin. |
+| Client image: `public/` and `.next/static` copied in explicitly | The standalone bundle omits both by design — the docs assume a CDN fronts them. Nothing fronts this deployment. |
 
 Configuration is entirely environment-driven (§7), so the same image runs in
 every environment:
@@ -685,12 +704,62 @@ make ghcr-login                  # uses the gh CLI's token
 make image-push-multi TAG=v0.1.0
 ```
 
-The web client has no image — it's a static/Node build deployed on its own. Add
-a second Dockerfile under `web/` and a matching `IMAGE_NAME` if that changes.
+The workflow runs as two jobs, `backend` and `web`, so a Go change and a client
+change don't wait on each other and a failure names which half broke. The client
+job type-checks and lints before building; the backend job runs `go build`,
+`go vet` and `go test`.
 
 ---
 
-## 11. Relationship to lumi-neo
+## 11. Deployment
+
+Deployed to the **`dev-next`** namespace at **https://rob.expona.ai**.
+`deploy/` holds the manifests and is the single source of truth — CI applies
+them, nothing is patched in place, and there is no second copy in the
+infrastructure repository to drift away from this one. `deploy/README.md` has
+the bootstrap steps and the operational detail; this section is the shape.
+
+```
+                   rob.expona.ai (nginx ingress, cert-manager TLS)
+                                │
+           ┌────────────────────┴────────────────────┐
+   /lumi.chat.v1.ChatService                        /
+   /health                                          │
+           │                                        │
+     lumi-go-api:8080                        lumi-go-web:3000
+     (Go, ConnectRPC over h2c)               (Next.js standalone)
+           │
+           └──── Neon Postgres (external, TLS)
+```
+
+One host, split by path. The browser loads the page and then streams from the
+Connect endpoint on the **same origin**: no CORS preflight in front of every
+turn, one certificate, and a client image with no hostname compiled into it.
+TLS terminates at the ingress, which is why the Go server speaks h2c.
+
+| Concern | Decision | Reason |
+|---|---|---|
+| Replicas (API) | 1, `strategy: Recreate` | The rate limiter and the in-memory half of the token budget are per-process. A second pod hands out the full per-minute allowance independently, so the global cap silently doubles — and a rolling update does exactly that for the length of the rollout. Scaling out means moving the limiter behind Redis first (§8). |
+| Auth | none, `AUTH_MODE=dev` | It is a résumé; a login in front of it defeats the purpose. The limits in `deploy/configmap.yaml` are what stands in for authentication (§8) — treat them as the security boundary, not as tuning. |
+| Retrieval | `RAG=off` | Embeddings are generated locally through Ollama and there is no Ollama in this cluster. The fallback inlines the corpus in the prompt, which costs tokens rather than answers; what is actually lost is `search_go_docs`, since the Go documentation is far too large to inline (§5). |
+| Filesystem | read-only root, both pods | Nothing is written at runtime. The client gets one `emptyDir` at `.next/cache`, which `next/image` needs to optimize the sidebar image. |
+| Streaming | `proxy-buffering: "off"` on the ingress | With buffering on, nginx holds the response until the handler finishes: the stream still works, it just stops being a stream. |
+| Secrets | created imperatively, never in a file | The repository is public. `deploy/secret.example.yaml` is a template that documents the two keys and deliberately contains neither. |
+
+```bash
+make deploy-dry-run   # server-side validation against the real API server
+make deploy           # apply + restart both rollouts + wait
+```
+
+`.github/workflows/deploy-dev.yml` does the same on every green build of `main`,
+then smoke-tests `/health` and `/` through the ingress. Both deployments track
+`:latest`, a tag that never changes — so `apply` alone tells Kubernetes nothing
+and the rollout restart is what gives `imagePullPolicy: Always` something to act
+on. It needs one repository secret, `KUBE_CONFIG_DEV` (base64 kubeconfig).
+
+---
+
+## 12. Relationship to lumi-neo
 
 | lumi-neo (TypeScript) | lumi-go (Go) |
 |---|---|

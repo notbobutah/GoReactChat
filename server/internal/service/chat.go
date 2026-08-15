@@ -6,6 +6,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -26,13 +27,15 @@ type ChatService struct {
 	store   store.Store
 	session *chat.Session
 	logger  *slog.Logger
+	// maxInputChars bounds a single message. Zero means unbounded.
+	maxInputChars int
 }
 
-func NewChatService(st store.Store, session *chat.Session, logger *slog.Logger) *ChatService {
+func NewChatService(st store.Store, session *chat.Session, logger *slog.Logger, maxInputChars int) *ChatService {
 	if logger == nil {
 		logger = slog.Default()
 	}
-	return &ChatService{store: st, session: session, logger: logger}
+	return &ChatService{store: st, session: session, logger: logger, maxInputChars: maxInputChars}
 }
 
 var _ chatv1connect.ChatServiceHandler = (*ChatService)(nil)
@@ -75,6 +78,14 @@ func (s *ChatService) SendMessage(
 	// IS the message in that case.
 	if strings.TrimSpace(msg.GetText()) == "" && len(msg.GetAttachments()) == 0 {
 		return connect.NewError(connect.CodeInvalidArgument, errors.New("text or attachments required"))
+	}
+	// Rejected before any model call: on a public endpoint the per-message
+	// ceiling is what stops one request from spending a large share of the
+	// service-wide token budget. Counted in runes so a multi-byte language is
+	// not penalised for its encoding.
+	if n := len([]rune(msg.GetText())); s.maxInputChars > 0 && n > s.maxInputChars {
+		return connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("message is %d characters; the limit is %d", n, s.maxInputChars))
 	}
 
 	err = s.session.Send(ctx, scope, chat.SendInput{

@@ -63,6 +63,11 @@ type Deps struct {
 	TitleGenerator *TitleGenerator
 	// Extra tools beyond the chat baseline. Capability tools land here.
 	Tools []orchestrator.ToolDef
+	// MaxMessages caps how long one conversation can grow. Zero is unbounded.
+	// Every turn resends the whole history, so an unbounded thread costs more
+	// per turn than the last — this bounds that curve without needing to know
+	// who the visitor is.
+	MaxMessages int
 	// Overrides the default system prompt when set.
 	SystemPrompt string
 	Logger       *slog.Logger
@@ -116,6 +121,16 @@ func (s *Session) Send(ctx context.Context, scope store.Scope, in SendInput, emi
 		if err != nil {
 			return fmt.Errorf("create conversation: %w", err)
 		}
+	}
+
+	if s.deps.MaxMessages > 0 && conv.MessageCount >= s.deps.MaxMessages {
+		return emit(Event{
+			Type: EventError,
+			Code: "conversation_full",
+			Message: fmt.Sprintf(
+				"this conversation has reached its %d-message limit — start a new one to continue",
+				s.deps.MaxMessages),
+		})
 	}
 
 	// Snapshot BEFORE appending — the append below bumps MessageCount, so

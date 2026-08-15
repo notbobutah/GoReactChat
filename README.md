@@ -478,6 +478,8 @@ Read from the environment only — see `.env.example`.
 | `RATE_LIMIT` / `RATE_LIMIT_WINDOW_SECONDS` | `6` / `60` | Per caller (user × workspace × tier). |
 | `GLOBAL_RATE_LIMIT` | `10` | Per window across **all** callers. |
 | `TOKEN_BUDGET` | `2000000` | Total tokens the deployment may ever spend. `0` disables. |
+| `MAX_INPUT_CHARS` | `2000` | Per-message ceiling, rejected before any model call. |
+| `MAX_MESSAGES_PER_CONVERSATION` | `40` | Per-thread ceiling. |
 | `GROK_API_KEY` / `GROK_BASE_URL` / `GROK_MODEL` | — | xAI credentials, carried in `.env` for a future provider client. **Nothing reads them yet.** |
 | `DATA_DIR` | `../data` | Grounding documents (§5). |
 | `PROJECT_DOC` | `../README.md` | Delivered-work document indexed as evidence (§5). Empty disables it. |
@@ -496,9 +498,11 @@ service logs a warning at boot.
 
 ## 8. Limits
 
-The application is a public link funded by one API key, so two independent
-controls bound it: rate limiting caps how *fast* tokens can be spent, and the
-token budget caps how *many* exist at all.
+The application is a public link funded by one API key, and by design it has no
+login — anyone with the URL can use it. The limits are therefore the whole
+defence, in three layers: per-request ceilings cap how *large* a single call
+can be, rate limiting caps how *fast* calls arrive, and the token budget caps
+how *many* tokens exist at all.
 
 ### Rate limiting
 
@@ -512,6 +516,17 @@ Two limiters, composed — a request must pass both:
 With one or two readers the global limit is the one that binds. The per-caller
 limiter only starts mattering once real per-visitor identities exist — today
 every visitor shares one dev identity, so they share one bucket.
+
+### Per-request ceilings
+
+The site is public and deliberately has no login, so the limits are the defence
+— and a budget is only as strong as the largest single request allowed against
+it.
+
+| Limit | Default | Stops |
+|---|---|---|
+| `MAX_INPUT_CHARS` | 2,000 | One pasted wall of text spending a large slice of the budget. Rejected before any model call, counted in runes so a multi-byte language is not penalised for its encoding. |
+| `MAX_MESSAGES_PER_CONVERSATION` | 40 | An endless thread. Every turn resends the whole history, so cost per turn grows with length; this bounds the curve without needing to know who the visitor is. |
 
 ### Token budget
 

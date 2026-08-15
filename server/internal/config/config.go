@@ -64,8 +64,15 @@ type Config struct {
 	RateLimitWin    time.Duration
 	// TokenBudget is the total tokens this deployment may ever spend. Zero
 	// disables the cap.
-	TokenBudget    int64
-	AllowedOrigins []string
+	TokenBudget int64
+	// MaxInputChars bounds a single message. The token budget is only as strong
+	// as the per-call ceiling: without this, one paste can spend a large slice
+	// of it in a single request.
+	MaxInputChars int
+	// MaxMessagesPerConversation bounds one thread. Every turn resends the whole
+	// history, so an endless conversation costs more per turn than the last.
+	MaxMessagesPerConversation int
+	AllowedOrigins             []string
 }
 
 // Load reads the environment. It does not read .env files — use `make dev`,
@@ -111,8 +118,11 @@ func Load() (*Config, error) {
 		RateLimit:          envInt("RATE_LIMIT", 6),
 		GlobalRateLimit:    envInt("GLOBAL_RATE_LIMIT", 10),
 		TokenBudget:        int64(envInt("TOKEN_BUDGET", 2000000)),
-		RateLimitWin:       time.Duration(envInt("RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,
-		AllowedOrigins:     splitList(env("ALLOWED_ORIGINS", "http://localhost:3000")),
+		MaxInputChars:      envInt("MAX_INPUT_CHARS", 2000),
+
+		MaxMessagesPerConversation: envInt("MAX_MESSAGES_PER_CONVERSATION", 40),
+		RateLimitWin:               time.Duration(envInt("RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,
+		AllowedOrigins:             splitList(env("ALLOWED_ORIGINS", "http://localhost:3000")),
 	}
 
 	switch c.AuthMode {

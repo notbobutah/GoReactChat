@@ -217,6 +217,7 @@ func run(logger *slog.Logger) error {
 		RateLimiter:  rateLimiter,
 		ModelConfig:  modelConfig,
 		Budget:       tokens,
+		MaxMessages:  cfg.MaxMessagesPerConversation,
 		SystemPrompt: systemPrompt,
 		Tools:        tools,
 		Logger:       logger,
@@ -238,7 +239,7 @@ func run(logger *slog.Logger) error {
 	// --- http ----------------------------------------------------------------
 	mux := http.NewServeMux()
 	path, handler := chatv1connect.NewChatServiceHandler(
-		service.NewChatService(st, session, logger),
+		service.NewChatService(st, session, logger, cfg.MaxInputChars),
 		connect.WithInterceptors(auth.NewInterceptor(verifier)),
 	)
 	mux.Handle(path, handler)
@@ -265,6 +266,8 @@ func run(logger *slog.Logger) error {
 			"version", version, "addr", cfg.Addr(), "rpc_path", path,
 			"store", cfg.StoreKind, "model_client", cfg.ModelClient,
 			"rate_limit_per_user", cfg.RateLimit, "rate_limit_global", cfg.GlobalRateLimit,
+			"max_input_chars", cfg.MaxInputChars,
+			"max_messages_per_conversation", cfg.MaxMessagesPerConversation,
 			"strong_model", cfg.StrongModel, "effort", cfg.Effort)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err

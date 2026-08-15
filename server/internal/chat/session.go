@@ -56,6 +56,8 @@ type Deps struct {
 	Client      orchestrator.StreamingClient
 	RateLimiter orchestrator.RateLimiter
 	ModelConfig orchestrator.ModelConfig
+	// Budget caps total spend for the service. Nil disables the cap.
+	Budget orchestrator.TokenBudget
 	// Optional. Absent → conversations keep the trimmed-first-message fallback
 	// title rather than a generated one.
 	TitleGenerator *TitleGenerator
@@ -165,6 +167,7 @@ func (s *Session) Send(ctx context.Context, scope store.Scope, in SendInput, emi
 		Scope:       orchestrator.RateKey{UserID: scope.UserID, WorkspaceID: scope.WorkspaceID},
 		Tier:        orchestrator.TierStrong,
 		ModelConfig: s.deps.ModelConfig,
+		Budget:      s.deps.Budget,
 		Messages:    toOrchestratorMessages(history),
 		System:      system,
 		Tools:       s.deps.Tools,

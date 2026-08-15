@@ -47,9 +47,15 @@ db-up:
 db-down:
 	docker compose down
 
-## migrate: apply migrations to the local Postgres
+## migrate: apply every migration to the local Postgres, in order
+# Applied in filename order and each one is idempotent (IF NOT EXISTS), so
+# re-running is safe. Hardcoding a single file meant a new migration silently
+# never ran.
 migrate:
-	docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U lumi -d lumi < migrations/0001_init.sql
+	@for f in $$(ls migrations/*.sql | sort); do \
+		echo "applying $$f"; \
+		docker compose exec -T postgres psql -q -v ON_ERROR_STOP=1 -U lumi -d lumi < $$f || exit 1; \
+	done
 
 ## dev-server: run the backend against local Postgres
 dev-server:

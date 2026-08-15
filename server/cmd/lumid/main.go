@@ -22,6 +22,7 @@ import (
 
 	"github.com/expona-ai/lumi-go/server/gen/lumi/chat/v1/chatv1connect"
 	"github.com/expona-ai/lumi-go/server/internal/auth"
+	"github.com/expona-ai/lumi-go/server/internal/budget"
 	"github.com/expona-ai/lumi-go/server/internal/chat"
 	"github.com/expona-ai/lumi-go/server/internal/config"
 	"github.com/expona-ai/lumi-go/server/internal/corpus"
@@ -81,7 +82,32 @@ func run(logger *slog.Logger) error {
 		client = model.NewAnthropicClient(cfg.AnthropicKey, cfg.Effort)
 	}
 
-	rateLimiter := orchestrator.NewWindowRateLimiter(cfg.RateLimit, cfg.RateLimitWin)
+	// Two limiters: one per caller so a single visitor cannot take the whole
+	// allowance, and one shared so several visitors together still cannot. With
+	// one or two readers the global limit is the one that binds.
+	rateLimiter := orchestrator.NewCompositeRateLimiter(
+		orchestrator.NewWindowRateLimiter(cfg.RateLimit, cfg.RateLimitWin),
+		orchestrator.NewFixedKeyRateLimiter(
+			orchestrator.NewWindowRateLimiter(cfg.GlobalRateLimit, cfg.RateLimitWin)),
+	)
+
+	// Service-wide spend ceiling. Rate limiting bounds how fast tokens go; this
+	// bounds how many exist. Persisted through the store when there is one, so a
+	// restart cannot hand out a fresh budget.
+	var budgetStore budget.Store
+	if pg, ok := st.(*store.PostgresStore); ok {
+		budgetStore = pg
+	}
+	tokens, err := budget.New(ctx, cfg.TokenBudget, budgetStore, logger)
+	if err != nil {
+		return err
+	}
+	if used, limit := tokens.Used(); limit > 0 {
+		logger.Info("token budget", "used", used, "limit", limit,
+			"remaining", limit-used, "persisted", budgetStore != nil)
+	} else {
+		logger.Warn("TOKEN_BUDGET is unset — total spend is uncapped")
+	}
 
 	// --- grounding documents -------------------------------------------------
 	// The résumé and job description are small and relevant to every turn, so
@@ -190,6 +216,7 @@ func run(logger *slog.Logger) error {
 		Client:       client,
 		RateLimiter:  rateLimiter,
 		ModelConfig:  modelConfig,
+		Budget:       tokens,
 		SystemPrompt: systemPrompt,
 		Tools:        tools,
 		Logger:       logger,
@@ -237,6 +264,7 @@ func run(logger *slog.Logger) error {
 		logger.Info("listening",
 			"version", version, "addr", cfg.Addr(), "rpc_path", path,
 			"store", cfg.StoreKind, "model_client", cfg.ModelClient,
+			"rate_limit_per_user", cfg.RateLimit, "rate_limit_global", cfg.GlobalRateLimit,
 			"strong_model", cfg.StrongModel, "effort", cfg.Effort)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err

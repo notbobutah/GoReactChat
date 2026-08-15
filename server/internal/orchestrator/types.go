@@ -112,6 +112,10 @@ type StreamEvent struct {
 	Partial string // partial tool input JSON
 
 	StopReason string
+	// Token usage for the completed call, on StreamMessageEnd. Cumulative for
+	// the whole message, which is what the provider reports.
+	InputTokens  int64
+	OutputTokens int64
 }
 
 // StreamRequest is one model call.
@@ -130,6 +134,13 @@ type Stream interface {
 	Current() StreamEvent
 	Err() error
 	Close() error
+}
+
+// TokenBudget caps total model spend across the whole service. The loop checks
+// it before each call and reports usage after. Nil disables the cap.
+type TokenBudget interface {
+	Allow(ctx context.Context) error
+	Record(ctx context.Context, inputTokens, outputTokens int64)
 }
 
 // StreamingClient is the provider seam. Production wires the Anthropic client;
@@ -158,6 +169,9 @@ const (
 	CodeToolError      = "tool_error"
 	CodeModelError     = "model_error"
 	CodeGuardViolation = "guard_violation"
+	// CodeBudgetExhausted means the service-wide token cap is spent. Distinct
+	// from rate limiting: waiting will not help.
+	CodeBudgetExhausted = "budget_exhausted"
 )
 
 // CanvasBlock is a renderable affordance produced mid-turn (a thinking chip, a

@@ -52,13 +52,19 @@ type Config struct {
 	ProjectDoc string
 
 	// "anthropic" (default) or "echo".
-	ModelClient    string
-	AnthropicKey   string
-	StrongModel    string
-	FastModel      string
-	Effort         string
-	RateLimit      int
-	RateLimitWin   time.Duration
+	ModelClient  string
+	AnthropicKey string
+	StrongModel  string
+	FastModel    string
+	Effort       string
+	RateLimit    int
+	// GlobalRateLimit caps requests across all callers, not per caller. With one
+	// or two visitors this is the limit that actually binds.
+	GlobalRateLimit int
+	RateLimitWin    time.Duration
+	// TokenBudget is the total tokens this deployment may ever spend. Zero
+	// disables the cap.
+	TokenBudget    int64
 	AllowedOrigins []string
 }
 
@@ -102,7 +108,9 @@ func Load() (*Config, error) {
 		StrongModel:        env("STRONG_MODEL", "claude-opus-5"),
 		FastModel:          env("FAST_MODEL", "claude-haiku-4-5"),
 		Effort:             env("EFFORT", "medium"),
-		RateLimit:          envInt("RATE_LIMIT", 60),
+		RateLimit:          envInt("RATE_LIMIT", 6),
+		GlobalRateLimit:    envInt("GLOBAL_RATE_LIMIT", 10),
+		TokenBudget:        int64(envInt("TOKEN_BUDGET", 2000000)),
 		RateLimitWin:       time.Duration(envInt("RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,
 		AllowedOrigins:     splitList(env("ALLOWED_ORIGINS", "http://localhost:3000")),
 	}

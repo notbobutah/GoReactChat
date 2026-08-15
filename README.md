@@ -475,7 +475,9 @@ Read from the environment only — see `.env.example`.
 | `STRONG_MODEL` | `claude-opus-5` | Main reasoning tier. |
 | `FAST_MODEL` | `claude-haiku-4-5` | Auto-titling and other helpers. |
 | `EFFORT` | `medium` | Thinking depth / token spend. Raise to `high`/`xhigh` for harder work. |
-| `RATE_LIMIT` / `RATE_LIMIT_WINDOW_SECONDS` | `60` / `60` | Per user × workspace × tier. |
+| `RATE_LIMIT` / `RATE_LIMIT_WINDOW_SECONDS` | `6` / `60` | Per caller (user × workspace × tier). |
+| `GLOBAL_RATE_LIMIT` | `10` | Per window across **all** callers. |
+| `TOKEN_BUDGET` | `2000000` | Total tokens the deployment may ever spend. `0` disables. |
 | `GROK_API_KEY` / `GROK_BASE_URL` / `GROK_MODEL` | — | xAI credentials, carried in `.env` for a future provider client. **Nothing reads them yet.** |
 | `DATA_DIR` | `../data` | Grounding documents (§5). |
 | `PROJECT_DOC` | `../README.md` | Delivered-work document indexed as evidence (§5). Empty disables it. |
@@ -492,7 +494,52 @@ service logs a warning at boot.
 
 ---
 
-## 8. Running
+## 8. Limits
+
+The application is a public link funded by one API key, so two independent
+controls bound it: rate limiting caps how *fast* tokens can be spent, and the
+token budget caps how *many* exist at all.
+
+### Rate limiting
+
+Two limiters, composed — a request must pass both:
+
+| Limiter | Default | Bounds |
+|---|---|---|
+| Per caller | 6 / minute | One visitor cannot take the whole allowance |
+| Global (all callers pooled) | 10 / minute | Several visitors together still cannot |
+
+With one or two readers the global limit is the one that binds. The per-caller
+limiter only starts mattering once real per-visitor identities exist — today
+every visitor shares one dev identity, so they share one bucket.
+
+### Token budget
+
+`TOKEN_BUDGET` is a hard ceiling on input + output tokens for the whole
+deployment, across every conversation, for all time.
+
+- **Checked per model call, not per turn.** A tool-using turn makes several
+  calls, and the cap should stop the next call rather than only the next turn.
+- **Persisted in Postgres** (`lumi.token_usage`, one row per call). A restart —
+  or a crash loop, which is when you least want the meter reset — resumes where
+  it stopped. Boot fails rather than starting with a zeroed budget if the total
+  cannot be read.
+- **Counted from the provider's own numbers**, taken off the `message_delta`
+  event's cumulative usage, not estimated.
+- **Overshoots by at most one call.** The check cannot know a call's cost
+  before making it, so treat the cap as "stop starting new work", not an exact
+  stop.
+- When exhausted, a turn ends with an `error` event carrying
+  `budget_exhausted` — distinct from `rate_limited`, because waiting will not
+  help.
+
+A failed usage write is logged, not returned: the turn already happened, and
+losing the record must not also fail the reader's response. The in-memory total
+still counts it for the life of the process.
+
+---
+
+## 9. Running
 
 No database, no API key:
 
@@ -523,7 +570,7 @@ make dev-web
 | `web-build` | Production client build, including the TypeScript check. |
 | `refs` | Fetch the Go documentation into `data/reference/`. |
 | `resume-md` / `rag-check` | PDF → markdown; print what retrieval returns for sample questions. |
-| `image` / `image-run` / `image-push` / `image-push-multi` | Container build, local run, and registry push (§9). |
+| `image` / `image-run` / `image-push` / `image-push-multi` | Container build, local run, and registry push (§10). |
 
 ### Calling it by hand
 
@@ -549,7 +596,7 @@ curl -s -X POST localhost:8080/lumi.chat.v1.ChatService/ListConversations \
 
 ---
 
-## 9. Container image
+## 10. Container image
 
 `server/Dockerfile` builds the backend. The build context is `server/`, so the
 client and its `node_modules` never enter it.
@@ -628,7 +675,7 @@ a second Dockerfile under `web/` and a matching `IMAGE_NAME` if that changes.
 
 ---
 
-## 10. Relationship to lumi-neo
+## 11. Relationship to lumi-neo
 
 | lumi-neo (TypeScript) | lumi-go (Go) |
 |---|---|

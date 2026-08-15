@@ -188,9 +188,13 @@ func (s *anthropicStream) Next() bool {
 				return true
 			}
 		case anthropic.MessageDeltaEvent:
+			// Usage here is cumulative for the whole message, so this single
+			// event carries the full cost of the call.
 			s.current = orchestrator.StreamEvent{
-				Type:       orchestrator.StreamMessageEnd,
-				StopReason: string(v.Delta.StopReason),
+				Type:         orchestrator.StreamMessageEnd,
+				StopReason:   string(v.Delta.StopReason),
+				InputTokens:  v.Usage.InputTokens,
+				OutputTokens: v.Usage.OutputTokens,
 			}
 			return true
 		}

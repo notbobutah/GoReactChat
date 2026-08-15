@@ -266,3 +266,29 @@ func (s *PostgresStore) DeleteConversation(ctx context.Context, id string, scope
 	}
 	return count, nil
 }
+
+// --- token usage -------------------------------------------------------------
+// Backs the service-wide token budget (internal/budget). Kept on the store
+// because it is persistence, not policy: the budget package decides what the
+// numbers mean.
+
+// TotalTokens returns every token recorded so far. Called once at boot.
+func (s *PostgresStore) TotalTokens(ctx context.Context) (int64, error) {
+	var total int64
+	if err := s.pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(input_tokens + output_tokens), 0)::bigint FROM lumi.token_usage
+	`).Scan(&total); err != nil {
+		return 0, fmt.Errorf("sum token usage: %w", err)
+	}
+	return total, nil
+}
+
+// RecordTokens appends the usage of one model call.
+func (s *PostgresStore) RecordTokens(ctx context.Context, inputTokens, outputTokens int64) error {
+	if _, err := s.pool.Exec(ctx, `
+		INSERT INTO lumi.token_usage (input_tokens, output_tokens) VALUES ($1, $2)
+	`, inputTokens, outputTokens); err != nil {
+		return fmt.Errorf("insert token usage: %w", err)
+	}
+	return nil
+}

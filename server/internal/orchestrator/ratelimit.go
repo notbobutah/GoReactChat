@@ -67,3 +67,37 @@ func (r *WindowRateLimiter) Check(key RateKey) Decision {
 	b.count++
 	return Decision{Allowed: true}
 }
+
+// FixedKeyRateLimiter collapses every caller into one bucket, turning a
+// per-user limiter into a service-wide one. Used alongside the per-user
+// limiter so a single visitor cannot consume the whole allowance, and so
+// several visitors together still cannot exceed it.
+type FixedKeyRateLimiter struct {
+	inner RateLimiter
+	key   RateKey
+}
+
+func NewFixedKeyRateLimiter(inner RateLimiter) *FixedKeyRateLimiter {
+	return &FixedKeyRateLimiter{inner: inner, key: RateKey{UserID: "*", WorkspaceID: "*"}}
+}
+
+func (r *FixedKeyRateLimiter) Check(RateKey) Decision { return r.inner.Check(r.key) }
+
+// CompositeRateLimiter denies if any of its limiters denies. The first denial
+// wins, so the reported retry hint is the one that actually blocked.
+type CompositeRateLimiter struct {
+	limiters []RateLimiter
+}
+
+func NewCompositeRateLimiter(limiters ...RateLimiter) *CompositeRateLimiter {
+	return &CompositeRateLimiter{limiters: limiters}
+}
+
+func (c *CompositeRateLimiter) Check(key RateKey) Decision {
+	for _, l := range c.limiters {
+		if d := l.Check(key); !d.Allowed {
+			return d
+		}
+	}
+	return Decision{Allowed: true}
+}

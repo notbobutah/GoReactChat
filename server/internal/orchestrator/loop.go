@@ -31,6 +31,9 @@ type LoopOptions struct {
 
 	MaxTokens     int64
 	MaxToolRounds int
+
+	// Budget caps total spend for the service. Nil disables the cap.
+	Budget TokenBudget
 }
 
 // Emit receives each event the loop yields. Returning an error aborts the run
@@ -80,6 +83,19 @@ func RunStreamingLoop(ctx context.Context, opts LoopOptions, emit Emit) error {
 			})
 		}
 
+		// 1b. Service-wide budget gate. Checked per round, not per turn: a
+		// tool-using turn makes several calls, and the cap should stop the next
+		// one rather than only the next turn.
+		if opts.Budget != nil {
+			if err := opts.Budget.Allow(ctx); err != nil {
+				return emit(Event{
+					Type:    EventError,
+					Code:    CodeBudgetExhausted,
+					Message: "this deployment has reached its total usage limit",
+				})
+			}
+		}
+
 		// 2-3. Stream, accumulating assistant text and tool calls.
 		var assistantText strings.Builder
 		var preambleStart time.Time
@@ -124,6 +140,9 @@ func RunStreamingLoop(ctx context.Context, opts LoopOptions, emit Emit) error {
 				case StreamMessageEnd:
 					if ev.StopReason != "" {
 						stopReason = ev.StopReason
+					}
+					if opts.Budget != nil {
+						opts.Budget.Record(ctx, ev.InputTokens, ev.OutputTokens)
 					}
 				}
 			}

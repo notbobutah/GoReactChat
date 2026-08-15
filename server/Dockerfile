@@ -2,7 +2,7 @@
 # internal/, cmd/) lives there, so the client and its node_modules never enter
 # the build context.
 #
-#   docker build -f server/Dockerfile -t ghcr.io/<owner>/lumi-go/lumid server
+#   docker build -f server/Dockerfile -t ghcr.io/notbobutah/goreactchat/lumid server
 
 # --- build ------------------------------------------------------------------
 # Pinned to the toolchain in go.mod. --platform=$BUILDPLATFORM keeps the
@@ -39,7 +39,7 @@ FROM gcr.io/distroless/static-debian12:nonroot
 
 # CI overrides the full label set via docker/metadata-action; this one is here
 # so a locally built image still links to the repository on GHCR.
-LABEL org.opencontainers.image.source="https://github.com/expona-ai/lumi-go"
+LABEL org.opencontainers.image.source="https://github.com/notbobutah/GoReactChat"
 LABEL org.opencontainers.image.description="lumi-go chat backend (gRPC / Connect)"
 
 COPY --from=build /out/lumid /usr/local/bin/lumid

@@ -68,7 +68,7 @@ func fetch(client *http.Client, url string) (string, error) {
 		return "", err
 	}
 	// Identify the fetcher rather than pretending to be a browser.
-	req.Header.Set("User-Agent", "lumi-go-fetchrefs/1.0 (+https://github.com/expona-ai/lumi-go)")
+	req.Header.Set("User-Agent", "lumi-go-fetchrefs/1.0 (+https://github.com/notbobutah/GoReactChat)")
 
 	resp, err := client.Do(req)
 	if err != nil {

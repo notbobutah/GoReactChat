@@ -561,7 +561,8 @@ make image-push TAG=v0.1.0       # single-arch push
 make image-push-multi TAG=v0.1.0 # linux/amd64 + linux/arm64 in one manifest
 ```
 
-Default name: `ghcr.io/expona-ai/lumi-go/lumid`. Override with
+Default name: `ghcr.io/notbobutah/goreactchat/lumid` — lowercased, because
+ghcr.io rejects uppercase in image names. Override with
 `IMAGE=…`. `TAG` defaults to the short commit SHA.
 
 **Build decisions and why:**
@@ -584,7 +585,7 @@ docker run --rm -p 8080:8080 \
   -e DATABASE_URL="postgres://…" \
   -e ANTHROPIC_API_KEY="sk-ant-…" \
   -e ALLOWED_ORIGINS="https://app.example.com" \
-  ghcr.io/expona-ai/lumi-go/lumid:v0.1.0
+  ghcr.io/notbobutah/goreactchat/lumid:v0.1.0
 ```
 
 ### Publishing to GitHub Container Registry
@@ -605,8 +606,8 @@ workflow also runs `go build`, `go vet` and `go test` before building the image,
 and attaches a signed provenance attestation to each published digest:
 
 ```bash
-gh attestation verify oci://ghcr.io/expona-ai/lumi-go/lumid:latest \
-  --repo expona-ai/lumi-go
+gh attestation verify oci://ghcr.io/notbobutah/goreactchat/lumid:latest \
+  --repo notbobutah/GoReactChat
 ```
 
 **First publish:** the package is created private and inherits the repository's

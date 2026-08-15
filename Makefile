@@ -5,9 +5,11 @@ SERVER   := server
 WEB      := web
 
 # Container image. Override IMAGE to push somewhere else:
-#   make image-push IMAGE=ghcr.io/acme/lumi-go/lumid TAG=v0.1.0
+#   make image-push IMAGE=ghcr.io/acme/goreactchat/lumid TAG=v0.1.0
 REGISTRY ?= ghcr.io
-IMAGE    ?= $(REGISTRY)/expona-ai/lumi-go/lumid
+# ghcr.io rejects uppercase in image names, so this is the lowercased form of
+# notbobutah/GoReactChat. CI derives the same name from ${GITHUB_REPOSITORY,,}.
+IMAGE    ?= $(REGISTRY)/notbobutah/goreactchat/lumid
 VERSION  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 TAG      ?= $(VERSION)
 

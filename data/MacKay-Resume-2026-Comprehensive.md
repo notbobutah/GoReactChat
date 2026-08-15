@@ -38,7 +38,7 @@ Technical strategy, multi-team & onshore/offshore delivery, Agile/Scrum/TDD/OneF
 
 *Jul 2023 – Present*
 
-Architected and shipped a 20-service, 30-repository AI-native marketing-intelligence platform — a Next.js/TypeScript web app, Python CrewAI generation services, and a dedicated TypeScript agent runtime — running on Kubernetes across dev, stage, and prod, and operated end-to-end by a 3-engineer team. Users create a project from nothing more than a company name or URL, and the platform fills it in through direct LLM processing of loaded content and dynamic selection across specialized agent crews.
+Architected and shipped a 20-service, 30-repository AI-native marketing-intelligence platform — a Next.js/TypeScript web app, Python CrewAI generation services, and a dedicated TypeScript agent runtime — running on Kubernetes across dev, stage, and prod, and operated end-to-end by a 3-engineer team. Users create a project from nothing more than a company name or URL, and the platform fills it in through direct LLM processing of loaded content and dynamic selection across specialized agent crews. Built in-product support on GitHub as the system of record — tickets open as issues with priority, category and status encoded as labels — with Telegram push alerts gated to high and urgent priority so the channel stays a pager rather than a firehose, and designed to fail open: a notification outage or missing configuration degrades to a logged warning and never blocks a ticket from being filed.
 
 ### Senior Software Consultant — Utah State Board of Education
 

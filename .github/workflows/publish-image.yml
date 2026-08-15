@@ -1,0 +1,97 @@
+name: publish image
+
+# Builds the backend image and pushes it to GitHub Container Registry.
+#
+# Pull requests build but do NOT push — a fork's token can't write packages, and
+# an unreviewed branch shouldn't be able to publish a tag anyone might pull.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  # ghcr.io/<owner>/<repo>/lumid — the extra path segment leaves room for a
+  # second image (the web client) under the same repository.
+  IMAGE_NAME: ${{ github.repository }}/lumid
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Required for the GITHUB_TOKEN to push to ghcr.io. No PAT needed.
+      packages: write
+      # Required by the build provenance attestation below.
+      id-token: write
+      attestations: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Compile and vet before building an image — a broken binary should fail
+      # here, not on a pull.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
+      - name: Build and vet
+        working-directory: server
+        run: |
+          go build ./...
+          go vet ./...
+          go test ./...
+
+      # buildx for multi-platform output and the GitHub Actions layer cache.
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        # Skipped on pull requests, which build but never push.
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Derive tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          file: server/Dockerfile
+          # Go cross-compiles, so arm64 costs a second compile rather than a
+          # QEMU-emulated build (see --platform=$BUILDPLATFORM in the Dockerfile).
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Signed statement of what built this image, verifiable with
+      # `gh attestation verify oci://<image> --repo <owner>/<repo>`.
+      - name: Attest build provenance
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true

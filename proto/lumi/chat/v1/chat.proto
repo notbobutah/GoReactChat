@@ -1,0 +1,177 @@
+syntax = "proto3";
+
+package lumi.chat.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+// ChatService is the whole chat surface of lumi-go.
+//
+// Derived from lumi-neo's WebSocket contract (src/surface/events.ts +
+// the inbound frame union in src/message-handler.ts). The WS frames map onto
+// RPCs; the SurfaceEvent union maps onto ChatEvent.event.
+//
+// Transport: served by connect-go, which speaks gRPC, gRPC-Web and the Connect
+// protocol on the same port. The browser uses Connect (server streaming over
+// HTTP/1.1 or HTTP/2); other backend services can dial it as native gRPC.
+service ChatService {
+  // One turn. The server persists the user message, runs the guarded
+  // streaming loop against the model, streams events back, and persists the
+  // assistant message on a clean end. Mirrors the `send` WS frame.
+  rpc SendMessage(SendMessageRequest) returns (stream ChatEvent);
+
+  // Left-rail conversation list for the authed (user, workspace) scope.
+  rpc ListConversations(ListConversationsRequest) returns (ListConversationsResponse);
+
+  // History replay for one conversation.
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
+
+  // Conversation management. Each is tenant-scoped: a conversation belonging
+  // to another (user, workspace) is reported as not found, never mutated.
+  rpc RenameConversation(RenameConversationRequest) returns (RenameConversationResponse);
+  rpc ArchiveConversation(ArchiveConversationRequest) returns (ArchiveConversationResponse);
+  rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
+}
+
+// --- send -------------------------------------------------------------------
+
+message SendMessageRequest {
+  // Client-generated conversation id (uuid). Created on first send under the
+  // VERIFIED scope from the auth interceptor — never from a client-supplied
+  // user/workspace field.
+  string conversation_id = 1;
+  // The user's text. Empty is allowed only when attachments are present.
+  string text = 2;
+  // Optional attachments (asset ids resolved server-side). Reserved for the
+  // document-attach flow; the scaffold accepts and echoes them.
+  repeated Attachment attachments = 3;
+  // Applied ONLY when this send creates the conversation row. An existing
+  // conversation keeps its own project_id.
+  string project_id = 4;
+}
+
+message Attachment {
+  string asset_id = 1;
+  // Client-side hints only. The server re-derives both from the asset row.
+  string filename = 2;
+  string mime_type = 3;
+}
+
+// --- streamed events --------------------------------------------------------
+
+// One event in a turn. Closed union; adding a variant requires updating the
+// web client's switch in lockstep.
+message ChatEvent {
+  oneof event {
+    TokenEvent token = 1;
+    BlockEvent block = 2;
+    DiscardBufferEvent discard_buffer = 3;
+    DoneEvent done = 4;
+    ErrorEvent error = 5;
+    ConversationTitledEvent conversation_titled = 6;
+  }
+}
+
+// Streaming text delta. Append to the current message buffer.
+message TokenEvent {
+  string content = 1;
+  // Canonical markdown rendering of the token, from the shared renderer.
+  string rendered = 2;
+}
+
+// A completed canvas block (brief, picker, thinking chip, ...). `data` carries
+// the block's payload as free-form JSON so new block kinds land without a
+// proto change; `rendered` is the canonical markdown every surface shows.
+message BlockEvent {
+  string kind = 1;
+  string id = 2;
+  string rendered = 3;
+  google.protobuf.Struct data = 4;
+}
+
+// Drop everything in the current message buffer — the recall-tool guard rail.
+// Emitted after a recall tool round so the preamble never ships alongside the
+// post-tool answer.
+message DiscardBufferEvent {}
+
+// Turn complete.
+message DoneEvent {}
+
+// Orchestrator / guard / runtime error. The turn stops here.
+message ErrorEvent {
+  string code = 1;
+  string message = 2;
+}
+
+// Fires at most once per conversation: the first user message on an untitled
+// conversation gets auto-titled. Always yielded before `done`.
+message ConversationTitledEvent {
+  string conversation_id = 1;
+  string title = 2;
+}
+
+// --- reads ------------------------------------------------------------------
+
+message Conversation {
+  string id = 1;
+  string title = 2;
+  string status = 3;
+  int32 message_count = 4;
+  string project_id = 5;
+  google.protobuf.Timestamp last_message_at = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message Message {
+  string id = 1;
+  // "user" | "assistant"
+  string role = 2;
+  string content = 3;
+  // Canvas blocks persisted alongside the assistant text, so a resumed
+  // conversation reproduces the same layout.
+  repeated BlockEvent blocks = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message ListConversationsRequest {
+  int32 limit = 1;
+  string project_id = 2;
+}
+
+message ListConversationsResponse {
+  repeated Conversation conversations = 1;
+}
+
+message GetMessagesRequest {
+  string conversation_id = 1;
+}
+
+message GetMessagesResponse {
+  repeated Message messages = 1;
+}
+
+// --- conversation management ------------------------------------------------
+
+message RenameConversationRequest {
+  string conversation_id = 1;
+  string title = 2;
+}
+
+message RenameConversationResponse {
+  Conversation conversation = 1;
+}
+
+message ArchiveConversationRequest {
+  string conversation_id = 1;
+}
+
+message ArchiveConversationResponse {}
+
+message DeleteConversationRequest {
+  string conversation_id = 1;
+}
+
+message DeleteConversationResponse {
+  int32 deleted_messages = 1;
+}

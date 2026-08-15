@@ -1,0 +1,14 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    # SendMessage streams a union of chat events, not a single response
+    # message. Naming it SendMessageResponse would describe the RPC shape at
+    # the cost of describing what the client actually receives.
+    - RPC_RESPONSE_STANDARD_NAME
+breaking:
+  use:
+    - FILE

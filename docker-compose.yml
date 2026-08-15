@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lumi
+      POSTGRES_PASSWORD: lumi
+      POSTGRES_DB: lumi
+    # 5433 on the host so this never collides with an existing local Postgres.
+    ports:
+      - "5433:5432"
+    volumes:
+      - lumi-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumi -d lumi"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  lumi-pgdata:

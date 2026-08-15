@@ -1,0 +1,22 @@
+.env
+.env.local
+*.log
+
+# Fetched and derived data, not source: `make refs` re-downloads the Go docs,
+# and the embedding cache rebuilds itself on first boot.
+/data/reference/
+/data/.embeddings/
+
+# Go
+/server/bin/
+/server/lumid
+
+# Node / Next
+node_modules/
+.next/
+out/
+.turbo/
+
+# Editors
+.DS_Store
+.idea/

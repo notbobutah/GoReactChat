@@ -1,0 +1,8 @@
+# Keep the build context to source only — a smaller context uploads faster and
+# a stray local binary can't shadow the one we build. Test files stay in, so a
+# test stage can be added to this Dockerfile without changing the context.
+bin/
+lumid
+*.log
+.env
+.env.*

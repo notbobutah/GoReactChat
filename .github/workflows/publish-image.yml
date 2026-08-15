@@ -165,6 +165,11 @@ jobs:
         working-directory: web
         run: |
           npm ci
+          # Next generates the route/layout types (LayoutProps and friends) into
+          # next-env.d.ts and .next/types. Both are gitignored build output, so
+          # a fresh checkout has neither and tsc fails on types it cannot see.
+          # `typegen` writes them without paying for a full build.
+          npx next typegen
           npx tsc --noEmit
           npm run lint
 

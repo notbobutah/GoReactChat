@@ -37,15 +37,28 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/setup-kubectl@v4
 
+      # Absent credential is a skip, not a failure. Continuous deployment is
+      # opt-in: until KUBE_CONFIG_DEV exists the deploy is done by hand, and a
+      # red X on every build for a step nobody asked to run yet is noise that
+      # trains you to ignore the check.
+      - name: Check for a cluster credential
+        id: cred
+        env:
+          KUBE_CONFIG_DEV: ${{ secrets.KUBE_CONFIG_DEV }}
+        run: |
+          if [ -z "${KUBE_CONFIG_DEV}" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::KUBE_CONFIG_DEV is not set — skipping the deploy. See deploy/README.md to enable it."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Configure kubectl
+        if: steps.cred.outputs.present == 'true'
         env:
           KUBE_CONFIG_DEV: ${{ secrets.KUBE_CONFIG_DEV }}
         run: |
           set -euo pipefail
-          if [ -z "${KUBE_CONFIG_DEV}" ]; then
-            echo "::error::KUBE_CONFIG_DEV is not set. See deploy/README.md." >&2
-            exit 1
-          fi
           mkdir -p ~/.kube
           # Base64 only, one accepted encoding. A decoder that also tries raw
           # YAML has to guess when the secret is malformed, and guessing wrong
@@ -61,11 +74,13 @@ jobs:
       # leave both deployments crash-looping on a missing environment variable,
       # so fail here with a message that says which secret and where to make it.
       - name: Require the runtime secret
+        if: steps.cred.outputs.present == 'true'
         run: |
           kubectl -n "$NAMESPACE" get secret lumi-go-secrets >/dev/null 2>&1 \
             || { echo "::error::secret/lumi-go-secrets missing in $NAMESPACE — create it per deploy/README.md" >&2; exit 1; }
 
       - name: Apply manifests
+        if: steps.cred.outputs.present == 'true'
         run: |
           set -euo pipefail
           kubectl apply -f deploy/configmap.yaml
@@ -77,11 +92,13 @@ jobs:
       # about `apply` tells Kubernetes a new image exists. The restart is what
       # gives imagePullPolicy: Always something to act on.
       - name: Restart rollouts
+        if: steps.cred.outputs.present == 'true'
         run: |
           kubectl -n "$NAMESPACE" rollout restart deployment/lumi-go-api
           kubectl -n "$NAMESPACE" rollout restart deployment/lumi-go-web
 
       - name: Wait for rollouts
+        if: steps.cred.outputs.present == 'true'
         run: |
           set -euo pipefail
           kubectl -n "$NAMESPACE" rollout status deployment/lumi-go-api --timeout=5m
@@ -91,6 +108,7 @@ jobs:
       # reachable. This is the check that the ingress, the certificate and the
       # path split all still work end to end.
       - name: Smoke test through the ingress
+        if: steps.cred.outputs.present == 'true'
         run: |
           set -euo pipefail
           curl -fsS --max-time 20 "https://${HOST}/health" | tee /dev/stderr | grep -q '"status":"ok"'
@@ -99,6 +117,10 @@ jobs:
       - name: Summary
         if: always()
         run: |
+          if [ "${{ steps.cred.outputs.present }}" != "true" ]; then
+            echo "### Deploy skipped — no \`KUBE_CONFIG_DEV\` secret" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           {
             echo "### Deployed to \`${NAMESPACE}\`"
             echo

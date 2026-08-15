@@ -132,13 +132,15 @@ func kindOrder(k Kind) int {
 }
 
 // classify infers a document's role from its filename. The rule is deliberately
-// dumb and documented, so the outcome is predictable: anything naming a résumé
-// is one, anything that looks like a posting or an email from a recruiter is a
-// job description, everything else is supporting context.
+// dumb and documented, so the outcome is predictable: a README, portfolio or
+// GitHub analysis is delivered work; anything naming a résumé is one; anything
+// that looks like a posting or an email from a recruiter is a job description;
+// everything else is supporting context.
 func classify(name string) Kind {
 	l := strings.ToLower(name)
 	switch {
-	case strings.Contains(l, "readme"):
+	case strings.Contains(l, "readme"),
+		strings.Contains(l, "portfolio"), strings.Contains(l, "github"):
 		return KindProject
 	case strings.Contains(l, "resume"), strings.Contains(l, "résumé"), strings.Contains(l, "cv"):
 		return KindResume

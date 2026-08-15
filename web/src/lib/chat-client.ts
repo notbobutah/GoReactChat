@@ -9,7 +9,13 @@ import { ChatService } from "@/gen/lumi/chat/v1/chat_pb";
  * service directly over the Connect protocol, which gives us real server
  * streaming over fetch with no proxy in front.
  */
-const baseUrl = process.env.NEXT_PUBLIC_LUMI_URL ?? "http://localhost:8080";
+// Same-origin by default. In the cluster one ingress host serves both the page
+// and the Connect endpoints, so a relative base needs no CORS preflight and —
+// more importantly — keeps the built image portable: NEXT_PUBLIC_* is inlined at
+// build time, so baking a hostname here would mean one image per environment.
+// `next dev` picks up the absolute local URL from web/.env.development, where
+// the two processes really do live on different ports.
+const baseUrl = process.env.NEXT_PUBLIC_LUMI_URL ?? "";
 
 const transport = createConnectTransport({
   baseUrl,

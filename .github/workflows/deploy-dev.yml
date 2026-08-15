@@ -1,0 +1,106 @@
+name: deploy dev
+
+# Applies deploy/ to the dev-next namespace and restarts both rollouts, after
+# the images for that commit are on GHCR.
+#
+# `workflow_run` rather than a job inside `publish image` because a deploy needs
+# a cluster credential and image publishing does not — keeping them apart means
+# a pull request build never touches a workflow that can reach the cluster.
+on:
+  workflow_run:
+    workflows: ["publish image"]
+    types: [completed]
+  # Re-apply the manifests without waiting for a build — useful when only a
+  # ConfigMap or an Ingress rule changed.
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+
+env:
+  NAMESPACE: dev-next
+  HOST: rob.expona.ai
+
+jobs:
+  deploy:
+    # Only a green build of main. A tag build publishes an image too, but this
+    # environment tracks :latest, which is a main-branch artifact.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.head_branch == 'main') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-kubectl@v4
+
+      - name: Configure kubectl
+        env:
+          KUBE_CONFIG_DEV: ${{ secrets.KUBE_CONFIG_DEV }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KUBE_CONFIG_DEV}" ]; then
+            echo "::error::KUBE_CONFIG_DEV is not set. See deploy/README.md." >&2
+            exit 1
+          fi
+          mkdir -p ~/.kube
+          # Base64 only, one accepted encoding. A decoder that also tries raw
+          # YAML has to guess when the secret is malformed, and guessing wrong
+          # here means applying to the wrong cluster.
+          printf '%s' "${KUBE_CONFIG_DEV}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+          grep -q '^apiVersion:' ~/.kube/config \
+            || { echo "::error::KUBE_CONFIG_DEV did not decode to a kubeconfig." >&2; exit 1; }
+          kubectl config current-context
+
+      # The secret is created out of band (deploy/README.md) and holds the
+      # database URL and the model key. Applying manifests without it would
+      # leave both deployments crash-looping on a missing environment variable,
+      # so fail here with a message that says which secret and where to make it.
+      - name: Require the runtime secret
+        run: |
+          kubectl -n "$NAMESPACE" get secret lumi-go-secrets >/dev/null 2>&1 \
+            || { echo "::error::secret/lumi-go-secrets missing in $NAMESPACE — create it per deploy/README.md" >&2; exit 1; }
+
+      - name: Apply manifests
+        run: |
+          set -euo pipefail
+          kubectl apply -f deploy/configmap.yaml
+          kubectl apply -f deploy/api.yaml
+          kubectl apply -f deploy/web.yaml
+          kubectl apply -f deploy/ingress.yaml
+
+      # Both deployments track :latest, a tag that never changes — so nothing
+      # about `apply` tells Kubernetes a new image exists. The restart is what
+      # gives imagePullPolicy: Always something to act on.
+      - name: Restart rollouts
+        run: |
+          kubectl -n "$NAMESPACE" rollout restart deployment/lumi-go-api
+          kubectl -n "$NAMESPACE" rollout restart deployment/lumi-go-web
+
+      - name: Wait for rollouts
+        run: |
+          set -euo pipefail
+          kubectl -n "$NAMESPACE" rollout status deployment/lumi-go-api --timeout=5m
+          kubectl -n "$NAMESPACE" rollout status deployment/lumi-go-web --timeout=5m
+
+      # A ready pod means the process started, not that the deployment is
+      # reachable. This is the check that the ingress, the certificate and the
+      # path split all still work end to end.
+      - name: Smoke test through the ingress
+        run: |
+          set -euo pipefail
+          curl -fsS --max-time 20 "https://${HOST}/health" | tee /dev/stderr | grep -q '"status":"ok"'
+          curl -fsS --max-time 20 -o /dev/null "https://${HOST}/"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Deployed to \`${NAMESPACE}\`"
+            echo
+            echo "https://${HOST}"
+          } >> "$GITHUB_STEP_SUMMARY"

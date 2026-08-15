@@ -1,0 +1,16 @@
+# node_modules is reinstalled from the lockfile inside the image — copying the
+# host's tree in would both bloat the context and risk shipping binaries built
+# for the wrong platform.
+node_modules
+.next
+npm-debug.log*
+
+# Dev-only environment. The build must not see NEXT_PUBLIC_LUMI_URL, or the
+# localhost base URL gets inlined into the production bundle.
+.env
+.env.*
+
+.git
+Dockerfile
+.dockerignore
+README.md

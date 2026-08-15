@@ -1,0 +1,90 @@
+# rob.expona.ai — one host, two backends, split by path.
+#
+# Same-origin is the point: the browser fetches the page and then streams from
+# the Connect endpoint on the same origin, so there is no CORS preflight in
+# front of every turn and no second hostname to certificate. It is also what
+# lets the web image stay environment-agnostic, since the client resolves its
+# base URL relatively (web/src/lib/chat-client.ts).
+#
+# This is a separate Ingress object from the shared `nextjs-ingress` in the
+# infrastructure repository. nginx merges rules across Ingresses by host, so a
+# distinct host lands cleanly here and this deployment cannot break the others
+# by editing a file it shares with them.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lumi-go
+  namespace: dev-next
+  labels:
+    app.kubernetes.io/part-of: lumi-go
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    # A turn is a long-lived server stream. Buffering is the setting that
+    # matters: with it on, nginx holds the response until the handler finishes
+    # and the whole answer arrives at once — the stream still "works", it just
+    # stops being a stream. The timeouts keep a long answer from being cut.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    # MAX_INPUT_CHARS bounds a message at 2000 characters, so the default 1m
+    # body limit is already far more than a turn needs. Stated rather than
+    # inherited, since the app-level cap is a security boundary here.
+    nginx.ingress.kubernetes.io/proxy-body-size: "1m"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - rob.expona.ai
+      secretName: lumi-go-tls
+  rules:
+    - host: "rob.expona.ai"
+      http:
+        paths:
+          # The Connect/gRPC-Web endpoints. The path is the fully-qualified
+          # proto service name — it comes from the generated handler, so it
+          # changes only if the package in proto/lumi/chat/v1/chat.proto does.
+          # nginx matches the most specific prefix, so this wins over `/`.
+          - path: /lumi.chat.v1.ChatService
+            pathType: Prefix
+            backend:
+              service:
+                name: lumi-go-api
+                port:
+                  number: 8080
+          # Exposed deliberately: it is the one endpoint that can confirm from
+          # outside the cluster that the backend — not just the page — is up.
+          # It returns {"status":"ok"} and nothing else.
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: lumi-go-api
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lumi-go-web
+                port:
+                  number: 3000
+---
+# Its own certificate rather than another name on the shared expona-api-tls.
+# Adding a name to that certificate re-issues it, which briefly puts every host
+# on it at the mercy of one rate-limited ACME order.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: lumi-go-tls
+  namespace: dev-next
+  labels:
+    app.kubernetes.io/part-of: lumi-go
+spec:
+  dnsNames:
+    - rob.expona.ai
+  secretName: lumi-go-tls
+  issuerRef:
+    # Namespaced Issuer, not a ClusterIssuer — this is what the other dev-next
+    # certificates use.
+    name: letsencrypt-prod

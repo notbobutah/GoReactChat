@@ -1,0 +1,28 @@
+# Root build context — used by server/Dockerfile, which needs `server/` and
+# `data/` together. Everything the backend image does not read is excluded here
+# so the context stays small; web/ builds from its own context with its own
+# .dockerignore.
+
+web/
+node_modules/
+
+.git/
+.github/
+deploy/
+migrations/
+proto/
+docker-compose.yml
+Makefile
+
+# Secrets. .env is gitignored too, but a build context is assembled from the
+# working tree, not from git — an ignored file still gets sent without this.
+.env
+.env.*
+!.env.example
+
+# The embedding cache is only useful beside a reachable embedder, and the
+# cluster has none. Excluding it keeps ~6MB of vectors out of every image.
+data/.embeddings/
+
+**/*_test.go
+README.dev.md

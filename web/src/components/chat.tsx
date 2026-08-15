@@ -172,7 +172,7 @@ export function Chat() {
         {messages.length === 0 && !streaming && (
           <div className="pt-16">
             <p className="text-center text-sm text-black/40 dark:text-white/40">
-              Ask about Robert's experience against this role — his background,
+              Ask about Robert&rsquo;s experience against this role — his background,
               what he has built, or how this application works.
             </p>
             <Suggestions onPick={(q) => void send(q)} disabled={busy} className="mt-6" />

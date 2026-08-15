@@ -13,6 +13,7 @@ REGISTRY ?= ghcr.io
 # ghcr.io rejects uppercase in image names, so this is the lowercased form of
 # notbobutah/GoReactChat. CI derives the same name from ${GITHUB_REPOSITORY,,}.
 IMAGE    ?= $(REGISTRY)/notbobutah/goreactchat/lumid
+WEB_IMAGE ?= $(REGISTRY)/notbobutah/goreactchat/web
 VERSION  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo dev)
 TAG      ?= $(VERSION)
 
@@ -102,12 +103,26 @@ rag-check:
 	cd $(SERVER) && $(GO) test ./internal/rag -run TestLiveRetrieval -v
 
 ## image: build the backend container image for this host's architecture
+# Context is the repository root, not $(SERVER): the image ships data/ next to
+# the binary, so the corpus has to be inside the build context. .dockerignore
+# keeps web/ and its node_modules out.
 image:
-	docker build -f $(SERVER)/Dockerfile --build-arg VERSION=$(VERSION) -t $(IMAGE):$(TAG) $(SERVER)
+	docker build -f $(SERVER)/Dockerfile --build-arg VERSION=$(VERSION) -t $(IMAGE):$(TAG) .
+
+## image-web: build the Next.js client image
+image-web:
+	docker build -f $(WEB)/Dockerfile -t $(WEB_IMAGE):$(TAG) $(WEB)
 
 ## image-run: run the built image locally (in-memory store, canned replies)
 image-run:
-	docker run --rm -p 8080:8080 -e STORE=memory -e MODEL_CLIENT=echo $(IMAGE):$(TAG)
+	docker run --rm -p 8080:8080 -e STORE=memory -e MODEL_CLIENT=echo -e RAG=off $(IMAGE):$(TAG)
+
+## image-web-run: run the built client image locally on :3000
+# Read-only root plus a writable cache mirrors deploy/web.yaml — next/image
+# optimizes on first request and writes the result under .next/cache.
+image-web-run:
+	docker run --rm --read-only --tmpfs /app/.next/cache --tmpfs /tmp \
+		-p 3000:3000 $(WEB_IMAGE):$(TAG)
 
 ## ghcr-login: log docker in to ghcr.io using the gh CLI's token
 ghcr-login:
@@ -120,8 +135,30 @@ image-push: image
 ## image-push-multi: build and push linux/amd64 + linux/arm64 in one manifest
 image-push-multi:
 	docker buildx build -f $(SERVER)/Dockerfile --build-arg VERSION=$(VERSION) \
-		--platform linux/amd64,linux/arm64 -t $(IMAGE):$(TAG) --push $(SERVER)
+		--platform linux/amd64,linux/arm64 -t $(IMAGE):$(TAG) --push .
+
+## deploy-dry-run: validate deploy/ against the cluster without applying
+# Server-side dry run, so it checks against the real API server (CRDs, admission
+# webhooks) rather than just parsing YAML. Needs KUBECONFIG pointed at dev-next.
+deploy-dry-run:
+	kubectl apply --dry-run=server -f deploy/configmap.yaml -f deploy/api.yaml \
+		-f deploy/web.yaml -f deploy/ingress.yaml
+
+## deploy: apply deploy/ to dev-next and restart both rollouts
+# CI does this on every green build of main (.github/workflows/deploy-dev.yml);
+# this target is the same sequence by hand. The restart is what makes
+# imagePullPolicy: Always pick up a freshly published :latest.
+deploy:
+	kubectl apply -f deploy/configmap.yaml
+	kubectl apply -f deploy/api.yaml
+	kubectl apply -f deploy/web.yaml
+	kubectl apply -f deploy/ingress.yaml
+	kubectl -n dev-next rollout restart deployment/lumi-go-api
+	kubectl -n dev-next rollout restart deployment/lumi-go-web
+	kubectl -n dev-next rollout status deployment/lumi-go-api --timeout=5m
+	kubectl -n dev-next rollout status deployment/lumi-go-web --timeout=5m
 
 .PHONY: help generate lint-proto build test vet db-up db-down migrate dev-server dev-offline dev-web web-build \
 	refs resume-md rag-check \
-	image image-run ghcr-login image-push image-push-multi
+	image image-web image-run image-web-run ghcr-login image-push image-push-multi \
+	deploy-dry-run deploy

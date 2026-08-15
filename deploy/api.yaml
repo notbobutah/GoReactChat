@@ -1,0 +1,122 @@
+# The Go backend: ConnectRPC over h2c, TLS terminated at the ingress.
+#
+# This file is the single source of truth for the API deploy. CI applies it and
+# then restarts the rollout (.github/workflows/deploy-dev.yml) — there is no
+# second copy in the infrastructure repository to drift away from it.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lumi-go-api
+  namespace: dev-next
+  labels:
+    app: lumi-go-api
+    app.kubernetes.io/part-of: lumi-go
+spec:
+  # One replica on purpose. The rate limiter and the in-memory half of the token
+  # budget are per-process: a second replica would let each pod hand out the
+  # full per-minute allowance independently, so the global cap would silently
+  # become 2x. The persisted total in Postgres would still bound the lifetime
+  # spend, but the burst rate is what protects the wallet in the short run.
+  # Scaling out means moving the limiter behind Redis first.
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate, for the same reason: during a rolling update
+    # two pods are briefly live, each with its own limiter.
+    type: Recreate
+  selector:
+    matchLabels:
+      app: lumi-go-api
+  template:
+    metadata:
+      labels:
+        app: lumi-go-api
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        # uid 65532 — the `nonroot` user baked into distroless/static.
+        runAsUser: 65532
+        runAsGroup: 65532
+      containers:
+        - name: lumid
+          # :latest is what CI publishes on main. imagePullPolicy: Always plus a
+          # rollout restart after apply is what actually picks up a new build —
+          # the tag alone never changes, so nothing would trigger a pull.
+          image: ghcr.io/notbobutah/goreactchat/lumid:latest
+          imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            # The binary is static, the corpus is baked in and read once at
+            # boot, and nothing is written at runtime — so nothing needs a
+            # writable filesystem. No /tmp mount either: distroless has no shell
+            # to need one.
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: lumi-go-config
+            - secretRef:
+                name: lumi-go-secrets
+          env:
+            # AUTH_MODE=prod is not implemented — the verifier seam exists, the
+            # verifier itself lands with the token contract, and the service
+            # refuses to boot with prod set. `dev` treats the bearer token as
+            # the user id, which is exactly why this deployment must stay
+            # limit-bounded: every visitor shares one scope and one budget.
+            - name: AUTH_MODE
+              value: "dev"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          # Boot loads and normalizes the corpus and refuses to start if the
+          # persisted token total is unreadable, so a slow database makes startup
+          # slow rather than failing it. The startup probe buys that time without
+          # loosening the liveness probe afterwards.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      imagePullSecrets:
+        - name: gh-registry-credentials
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lumi-go-api
+  namespace: dev-next
+  labels:
+    app: lumi-go-api
+    app.kubernetes.io/part-of: lumi-go
+spec:
+  selector:
+    app: lumi-go-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http

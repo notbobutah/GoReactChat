@@ -309,6 +309,11 @@
         <li>Total spend capped service-wide and persisted in Postgres, with per-request and
           per-conversation ceilings — the substitute for authentication on a deliberately public,
           sign-in-free deployment.</li>
+        <li>Kubernetes manifests committed in <span class="metric">deploy/</span>, so the
+          infrastructure is reviewable rather than described: hardened pods (non-root, read-only root
+          filesystem, dropped capabilities, resource limits, health probes), an nginx ingress
+          splitting one host across both services with cert-manager TLS, and a workflow that applies
+          them and smoke-tests through the ingress.</li>
       </ul>
     </div>
   </section>

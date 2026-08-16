@@ -410,7 +410,12 @@ const SUGGESTIONS: { label: string; question: string }[] = [
   },
   {
     label: "Kubernetes & cloud",
-    question: "What is his experience with Kubernetes, containers and cloud infrastructure?",
+    // Asks for the checkable artifact first. The professional Kubernetes work
+    // is commercial and private, so a question phrased purely as "experience"
+    // draws answers a reader cannot verify — while this repository's own
+    // manifests are sitting there, public, and go unmentioned.
+    question:
+      "Start with the Kubernetes manifests in this repository's deploy/ directory — what they contain and what they show. Then cover his wider Kubernetes, container and cloud infrastructure experience.",
   },
   {
     label: "Recent work",

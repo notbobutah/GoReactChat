@@ -95,6 +95,34 @@ restores instead of rescanning. The digest reports its own tool-call count in
 the UI, on the principle that an autonomous agent whose cost is invisible is one
 nobody notices running away.
 
+**Kubernetes evidence is in the repository, not just on the résumé.** The
+Kubernetes and cloud experience described under the professional roles is
+commercial and therefore private — but GoReactChat is not, and it runs on
+Kubernetes. Its `deploy/` directory is committed and readable: Deployment and
+Service manifests for both processes, an nginx Ingress splitting one host
+across them by path, a cert-manager Certificate, a ConfigMap, and a Secret
+template that documents the required keys while deliberately containing none of
+their values, because the repository is public.
+
+The manifests are worth opening rather than counting. Both pods run
+`runAsNonRoot` with a read-only root filesystem, all capabilities dropped and
+`seccompProfile: RuntimeDefault`; both set resource requests and limits; both
+carry readiness, liveness and startup probes, the startup probe sized for a boot
+that loads a document corpus. The API deployment is pinned to a single replica
+with `strategy: Recreate` and the manifest says why — the rate limiter and the
+in-memory half of the token budget are per-process, so a second pod would
+silently double the global cap, and a rolling update would do the same for the
+length of the rollout. The ingress carries `proxy-buffering: "off"`, without
+which nginx holds a streaming response until the handler finishes and the stream
+quietly stops being a stream. `.github/workflows/deploy-dev.yml` applies the
+manifests, restarts the rollouts and then smoke-tests the service through the
+ingress, on the reasoning that a ready pod proves a process started rather than
+that the deployment is reachable.
+
+That is the difference between claiming Kubernetes and showing it: the decisions
+are legible, the trade-offs are written down next to the setting they explain,
+and a reader can check every one of them against a running deployment.
+
 **Public Go begins with this project.** Before GoReactChat the account has one
 Go repository — `on-xml-proxy`, about 10 KB of SOAP/XML examples from 2019.
 Go experience prior to that is professional rather than public: the résumé

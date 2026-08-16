@@ -816,6 +816,24 @@ TLS terminates at the ingress, which is why the Go server speaks h2c.
 | Streaming | `proxy-buffering: "off"` on the ingress | With buffering on, nginx holds the response until the handler finishes: the stream still works, it just stops being a stream. |
 | Secrets | created imperatively, never in a file | The repository is public. `deploy/secret.example.yaml` is a template that documents the two keys and deliberately contains neither. |
 
+### The manifests are the Kubernetes evidence
+
+Everything below is committed and readable in the repository — this is not a
+description of infrastructure kept somewhere private. Each file is a small,
+reviewable artifact, and each carries the reasoning for its non-obvious choices
+in comments rather than in someone's memory:
+
+| File | What it is | What it demonstrates |
+|---|---|---|
+| `deploy/api.yaml` | Go backend Deployment + Service | Hardened pod: `runAsNonRoot` (uid 65532), `readOnlyRootFilesystem`, all capabilities dropped, `seccompProfile: RuntimeDefault`. Requests *and* limits set. Readiness, liveness and startup probes, the last sized for a boot that loads a corpus and reads a persisted counter. Single replica with `strategy: Recreate`, for a stated reason. |
+| `deploy/web.yaml` | Next.js Deployment + Service | Same hardening, plus the one `emptyDir` a read-only root actually requires — `next/image` writes optimized output to `.next/cache`, so without it the page 500s. |
+| `deploy/ingress.yaml` | nginx Ingress + cert-manager Certificate | Path-based split of one host across two backends, TLS terminated at the edge with an automatically issued certificate, and `proxy-buffering: "off"` — the annotation without which a server-streaming RPC silently stops being a stream. |
+| `deploy/configmap.yaml` | Non-secret runtime config | The limits that stand in for authentication on a public deployment, each with the reasoning attached. |
+| `deploy/secret.example.yaml` | Secret template | Documents the required keys and deliberately contains none of their values, with the imperative commands to create the real one. The repository is public. |
+| `deploy/README.md` | Operator documentation | Bootstrap order, what is shared with the rest of the namespace, and the constraints someone changing this needs to know first. |
+| `.github/workflows/deploy-dev.yml` | Continuous deployment | Applies the manifests, restarts both rollouts, waits for them, then smoke-tests `/health` and `/` *through the ingress* — because a ready pod proves a process started, not that the deployment is reachable. |
+| `migrations/*.sql` | Schema | Idempotent and applied in filename order, by `make migrate` locally or `make migrate-remote` against a hosted database. |
+
 ```bash
 make deploy-dry-run   # server-side validation against the real API server
 make deploy           # apply + restart both rollouts + wait

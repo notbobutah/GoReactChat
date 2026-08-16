@@ -70,7 +70,9 @@ type Deps struct {
 	MaxMessages int
 	// Overrides the default system prompt when set.
 	SystemPrompt string
-	Logger       *slog.Logger
+	// CacheSystemPrompt caches the tools+system prefix at the provider.
+	CacheSystemPrompt bool
+	Logger            *slog.Logger
 }
 
 // Session runs turns for one (scope, conversation) pair.
@@ -186,6 +188,7 @@ func (s *Session) Send(ctx context.Context, scope store.Scope, in SendInput, emi
 		Messages:    toOrchestratorMessages(history),
 		System:      system,
 		Tools:       s.deps.Tools,
+		CacheSystem: s.deps.CacheSystemPrompt,
 	}, func(ev orchestrator.Event) error {
 		switch ev.Type {
 		case orchestrator.EventTextDelta:

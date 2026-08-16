@@ -221,8 +221,12 @@ func run(logger *slog.Logger) error {
 		Budget:       tokens,
 		MaxMessages:  cfg.MaxMessagesPerConversation,
 		SystemPrompt: systemPrompt,
-		Tools:        tools,
-		Logger:       logger,
+		// The grounding documents are inlined in the system prompt and identical
+		// on every turn, so without this each turn pays full price to reprocess
+		// the same tens of thousands of tokens.
+		CacheSystemPrompt: cfg.PromptCaching,
+		Tools:             tools,
+		Logger:            logger,
 	}
 	// The echo client would "title" a conversation with its own canned reply.
 	// Leaving the generator unwired falls back to the trimmed first message,

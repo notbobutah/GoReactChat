@@ -49,6 +49,11 @@ data:
   # TOKEN_BUDGET is the total this deployment may EVER spend, not a per-day
   # figure: it is persisted in Postgres and survives restarts, so a crash loop
   # cannot reset it. Raising it is a deliberate act.
+  # The grounding documents are inlined in the system prompt and identical on
+  # every turn, so caching the tools+system prefix takes a repeat turn from
+  # ~31,650 billable tokens to ~4,350. The first turn of a conversation costs
+  # about 20% more (a cache write carries a premium); break-even is turn two.
+  PROMPT_CACHING: "on"
   TOKEN_BUDGET: "2000000"
   # Requests per minute. GLOBAL is the one that binds — it pools every visitor
   # into one bucket, so ten simultaneous readers cannot spend ten times as fast.

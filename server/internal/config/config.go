@@ -65,6 +65,10 @@ type Config struct {
 	// TokenBudget is the total tokens this deployment may ever spend. Zero
 	// disables the cap.
 	TokenBudget int64
+	// PromptCaching asks the provider to cache the tools+system prefix. The
+	// grounding documents are inlined and identical on every turn, so this is
+	// most of each request.
+	PromptCaching bool
 	// MaxInputChars bounds a single message. The token budget is only as strong
 	// as the per-call ceiling: without this, one paste can spend a large slice
 	// of it in a single request.
@@ -135,6 +139,7 @@ func Load() (*Config, error) {
 		GlobalRateLimit:    envInt("GLOBAL_RATE_LIMIT", 10),
 		TokenBudget:        int64(envInt("TOKEN_BUDGET", 2000000)),
 		MaxInputChars:      envInt("MAX_INPUT_CHARS", 2000),
+		PromptCaching:      env("PROMPT_CACHING", "on") != "off",
 
 		MaxMessagesPerConversation: envInt("MAX_MESSAGES_PER_CONVERSATION", 40),
 		RateLimitWin:               time.Duration(envInt("RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,

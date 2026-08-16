@@ -114,8 +114,54 @@ type StreamEvent struct {
 	StopReason string
 	// Token usage for the completed call, on StreamMessageEnd. Cumulative for
 	// the whole message, which is what the provider reports.
+	Usage Usage
+}
+
+// Usage is what one model call consumed.
+//
+// The cache fields are not decoration. With prompt caching on, the provider
+// reports cached prefix tokens SEPARATELY and excludes them from InputTokens —
+// so anything that adds only InputTokens and OutputTokens silently stops
+// counting the bulk of a cached prompt, and a spend cap quietly becomes a much
+// weaker cap than it reads as.
+type Usage struct {
 	InputTokens  int64
 	OutputTokens int64
+	// CacheCreationInputTokens were written to the cache by this call.
+	CacheCreationInputTokens int64
+	// CacheReadInputTokens were served from the cache instead of reprocessed.
+	CacheReadInputTokens int64
+}
+
+// Billing multipliers, relative to a base input token. These are the ratios
+// Anthropic documents for prompt caching — a cached read is a tenth of the
+// price, and writing the cache costs a premium over processing the same tokens
+// once. They are ratios rather than prices, so they do not go stale when
+// per-model pricing changes.
+const (
+	CacheWrite5mMultiplier = 1.25
+	CacheReadMultiplier    = 0.10
+)
+
+// BillableInputTokens converts a cached call into the number of uncached input
+// tokens it cost the equivalent of.
+//
+// The budget counts this rather than the raw sum, so that caching actually buys
+// more conversation instead of merely making the meter read lower. Counting raw
+// tokens would leave the cap exactly as tight as before while the real spend
+// fell — technically safe, but it would waste the saving the cache exists to
+// produce.
+func (u Usage) BillableInputTokens() int64 {
+	return u.InputTokens +
+		int64(float64(u.CacheCreationInputTokens)*CacheWrite5mMultiplier) +
+		int64(float64(u.CacheReadInputTokens)*CacheReadMultiplier)
+}
+
+// TotalRawTokens is every token the provider processed, cached or not. Used for
+// reporting, never for the cap: it is the honest measure of work done, and the
+// billable figure is the honest measure of what it cost.
+func (u Usage) TotalRawTokens() int64 {
+	return u.InputTokens + u.OutputTokens + u.CacheCreationInputTokens + u.CacheReadInputTokens
 }
 
 // StreamRequest is one model call.
@@ -125,6 +171,10 @@ type StreamRequest struct {
 	Messages  []Message
 	Tools     []ToolDef
 	MaxTokens int64
+	// CacheSystem asks the provider to cache the tools+system prefix. Off by
+	// default so a client that does not support caching is never handed a
+	// request it cannot honour.
+	CacheSystem bool
 }
 
 // Stream is an in-flight model response. Iterate with Next/Current, then check
@@ -140,7 +190,7 @@ type Stream interface {
 // it before each call and reports usage after. Nil disables the cap.
 type TokenBudget interface {
 	Allow(ctx context.Context) error
-	Record(ctx context.Context, inputTokens, outputTokens int64)
+	Record(ctx context.Context, u Usage)
 }
 
 // StreamingClient is the provider seam. Production wires the Anthropic client;

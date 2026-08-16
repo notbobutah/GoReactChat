@@ -554,6 +554,42 @@ still counts it for the life of the process.
 
 ---
 
+### Prompt caching
+
+The grounding documents are inlined in the system prompt and identical on every
+turn, so each turn was paying full price to reprocess the same ~30,000 tokens.
+One cache breakpoint on the system block caches the whole stable prefix (tools +
+system); only the conversation after it differs.
+
+Measured on this deployment, per turn:
+
+| | input | output | cache write | cache read | billable |
+|---|---|---|---|---|---|
+| Before | 29,889 | 1,761 | — | — | **31,650** |
+| Turn 1 (writes the cache) | 12 | 574 | 29,823 | — | **37,865** |
+| Turn 2+ (reads it) | 589 | 779 | — | 29,823 | **4,350** |
+
+A cached read is billed at a tenth, a write at a premium — so the **first turn
+of a conversation costs about 20% more** and every turn after it costs about
+**86% less**. Break-even is the second turn; a five-turn conversation costs
+roughly a third of what it did. That trade is right for this page, where the
+suggestion chips exist to invite follow-up questions — but it is a genuine trade,
+and a visitor who asks exactly one question and leaves costs slightly more than
+before.
+
+`PROMPT_CACHING=off` disables it.
+
+**The accounting had to change with it.** With caching on, the provider reports
+cached tokens *separately and excludes them from `input_tokens`* — so the
+existing budget, which summed input plus output, would have silently stopped
+counting the bulk of every prompt. The cap would have become several times
+weaker than it reads as, with nothing appearing wrong. The budget now counts a
+billable equivalent (`orchestrator.Usage.BillableInputTokens`), and
+`lumi.token_usage` stores the raw components so that figure stays checkable
+rather than asserted.
+
+---
+
 ## 9. Running
 
 No database, no API key:

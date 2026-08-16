@@ -11,6 +11,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/expona-ai/lumi-go/server/internal/newsagent"
+	"github.com/expona-ai/lumi-go/server/internal/orchestrator"
 )
 
 // PostgresStore is the production Store. Every statement carries the scope
@@ -274,22 +275,35 @@ func (s *PostgresStore) DeleteConversation(ctx context.Context, id string, scope
 // because it is persistence, not policy: the budget package decides what the
 // numbers mean.
 
-// TotalTokens returns every token recorded so far. Called once at boot.
+// TotalTokens returns the billable-equivalent total recorded so far. Called
+// once at boot to restore the budget.
+//
+// The sum is computed from the stored components rather than read from a
+// running total, so the multipliers live in exactly one place (the SQL mirrors
+// orchestrator.Usage.BillableInputTokens) and a historical row can never carry
+// a stale precomputed figure.
 func (s *PostgresStore) TotalTokens(ctx context.Context) (int64, error) {
 	var total int64
 	if err := s.pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(input_tokens + output_tokens), 0)::bigint FROM lumi.token_usage
+		SELECT COALESCE(SUM(
+			input_tokens
+			+ output_tokens
+			+ (cache_creation_input_tokens * 1.25)
+			+ (cache_read_input_tokens * 0.10)
+		), 0)::bigint FROM lumi.token_usage
 	`).Scan(&total); err != nil {
 		return 0, fmt.Errorf("sum token usage: %w", err)
 	}
 	return total, nil
 }
 
-// RecordTokens appends the usage of one model call.
-func (s *PostgresStore) RecordTokens(ctx context.Context, inputTokens, outputTokens int64) error {
+// RecordTokens appends the usage of one model call, cache components included.
+func (s *PostgresStore) RecordTokens(ctx context.Context, u orchestrator.Usage) error {
 	if _, err := s.pool.Exec(ctx, `
-		INSERT INTO lumi.token_usage (input_tokens, output_tokens) VALUES ($1, $2)
-	`, inputTokens, outputTokens); err != nil {
+		INSERT INTO lumi.token_usage
+			(input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens)
+		VALUES ($1, $2, $3, $4)
+	`, u.InputTokens, u.OutputTokens, u.CacheCreationInputTokens, u.CacheReadInputTokens); err != nil {
 		return fmt.Errorf("insert token usage: %w", err)
 	}
 	return nil

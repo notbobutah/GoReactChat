@@ -77,7 +77,19 @@ func (c *AnthropicClient) Stream(ctx context.Context, req orchestrator.StreamReq
 		OutputConfig: anthropic.OutputConfigParam{Effort: c.effort},
 	}
 	if req.System != "" {
-		params.System = []anthropic.TextBlockParam{{Text: req.System}}
+		// One cache breakpoint, on the system block. A breakpoint caches
+		// everything up to and including itself — tools and system prompt —
+		// which here is the whole stable prefix: the résumé, the job
+		// description and the project documentation are inlined and identical
+		// on every single turn, and were being reprocessed every time.
+		//
+		// Only the conversation that follows differs, so this is the largest
+		// possible prefix that is safe to cache.
+		block := anthropic.TextBlockParam{Text: req.System}
+		if req.CacheSystem {
+			block.CacheControl = anthropic.NewCacheControlEphemeralParam()
+		}
+		params.System = []anthropic.TextBlockParam{block}
 	}
 	if len(req.Tools) > 0 {
 		params.Tools = toAnthropicTools(req.Tools)
@@ -191,10 +203,14 @@ func (s *anthropicStream) Next() bool {
 			// Usage here is cumulative for the whole message, so this single
 			// event carries the full cost of the call.
 			s.current = orchestrator.StreamEvent{
-				Type:         orchestrator.StreamMessageEnd,
-				StopReason:   string(v.Delta.StopReason),
-				InputTokens:  v.Usage.InputTokens,
-				OutputTokens: v.Usage.OutputTokens,
+				Type:       orchestrator.StreamMessageEnd,
+				StopReason: string(v.Delta.StopReason),
+				Usage: orchestrator.Usage{
+					InputTokens:              v.Usage.InputTokens,
+					OutputTokens:             v.Usage.OutputTokens,
+					CacheCreationInputTokens: v.Usage.CacheCreationInputTokens,
+					CacheReadInputTokens:     v.Usage.CacheReadInputTokens,
+				},
 			}
 			return true
 		}

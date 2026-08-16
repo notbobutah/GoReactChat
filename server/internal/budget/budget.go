@@ -16,6 +16,8 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+
+	"github.com/expona-ai/lumi-go/server/internal/orchestrator"
 )
 
 // ErrExhausted is returned by Allow when the cap has been reached.
@@ -27,7 +29,7 @@ type Tracker interface {
 	// ErrExhausted when the budget is spent.
 	Allow(ctx context.Context) error
 	// Record adds the usage of a completed call.
-	Record(ctx context.Context, inputTokens, outputTokens int64)
+	Record(ctx context.Context, u orchestrator.Usage)
 	// Used returns tokens consumed so far and the configured cap.
 	Used() (used, limit int64)
 }
@@ -35,17 +37,20 @@ type Tracker interface {
 // Unlimited is the no-op tracker, used when no cap is configured.
 type Unlimited struct{}
 
-func (Unlimited) Allow(context.Context) error          { return nil }
-func (Unlimited) Record(context.Context, int64, int64) {}
-func (Unlimited) Used() (int64, int64)                 { return 0, 0 }
+func (Unlimited) Allow(context.Context) error                { return nil }
+func (Unlimited) Record(context.Context, orchestrator.Usage) {}
+func (Unlimited) Used() (int64, int64)                       { return 0, 0 }
 
 // Store persists cumulative usage. Implemented by the Postgres store; nil for
 // in-memory deployments.
 type Store interface {
 	// TotalTokens returns everything recorded so far.
 	TotalTokens(ctx context.Context) (int64, error)
-	// RecordTokens appends usage for one model call.
-	RecordTokens(ctx context.Context, inputTokens, outputTokens int64) error
+	// RecordTokens appends usage for one model call. Cache components are
+	// stored alongside the plain counts so the accounting stays auditable —
+	// the budget counts a billable equivalent, and without the raw numbers
+	// there would be no way to check that figure after the fact.
+	RecordTokens(ctx context.Context, u orchestrator.Usage) error
 }
 
 // Counter caps spend at a fixed number of tokens.
@@ -102,8 +107,12 @@ func (c *Counter) Allow(context.Context) error {
 // immediately, then persists. A failed write is logged rather than returned:
 // the turn already happened, and losing the record must not also fail the
 // user's response. The in-memory total still counts it for this process.
-func (c *Counter) Record(ctx context.Context, inputTokens, outputTokens int64) {
-	total := inputTokens + outputTokens
+func (c *Counter) Record(ctx context.Context, u orchestrator.Usage) {
+	// Billable equivalent, not the raw sum. A cached prefix is charged at a
+	// tenth, so counting raw tokens would keep the cap exactly as tight as it
+	// was before caching while the real spend fell — safe, but it would throw
+	// away the saving the cache exists to produce. See Usage.BillableInputTokens.
+	total := u.BillableInputTokens() + u.OutputTokens
 	if total <= 0 {
 		return
 	}
@@ -114,9 +123,10 @@ func (c *Counter) Record(ctx context.Context, inputTokens, outputTokens int64) {
 	c.mu.Unlock()
 
 	if c.store != nil {
-		if err := c.store.RecordTokens(ctx, inputTokens, outputTokens); err != nil {
+		if err := c.store.RecordTokens(ctx, u); err != nil {
 			c.log.Warn("token usage not persisted — the budget will under-count after a restart",
-				"error", err, "input_tokens", inputTokens, "output_tokens", outputTokens)
+				"error", err, "input_tokens", u.InputTokens, "output_tokens", u.OutputTokens,
+				"cache_read", u.CacheReadInputTokens, "cache_write", u.CacheCreationInputTokens)
 		}
 	}
 

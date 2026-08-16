@@ -34,6 +34,8 @@ type LoopOptions struct {
 
 	// Budget caps total spend for the service. Nil disables the cap.
 	Budget TokenBudget
+	// CacheSystem caches the tools+system prefix at the provider.
+	CacheSystem bool
 }
 
 // Emit receives each event the loop yields. Returning an error aborts the run
@@ -103,11 +105,12 @@ func RunStreamingLoop(ctx context.Context, opts LoopOptions, emit Emit) error {
 		stopReason := "end_turn"
 
 		stream, err := opts.Client.Stream(ctx, StreamRequest{
-			Model:     model,
-			System:    opts.System,
-			Messages:  messages,
-			Tools:     opts.Tools,
-			MaxTokens: opts.MaxTokens,
+			Model:       model,
+			System:      opts.System,
+			Messages:    messages,
+			Tools:       opts.Tools,
+			MaxTokens:   opts.MaxTokens,
+			CacheSystem: opts.CacheSystem,
 		})
 		if err != nil {
 			return emit(Event{Type: EventError, Code: CodeModelError, Message: err.Error()})
@@ -142,7 +145,7 @@ func RunStreamingLoop(ctx context.Context, opts LoopOptions, emit Emit) error {
 						stopReason = ev.StopReason
 					}
 					if opts.Budget != nil {
-						opts.Budget.Record(ctx, ev.InputTokens, ev.OutputTokens)
+						opts.Budget.Record(ctx, ev.Usage)
 					}
 				}
 			}

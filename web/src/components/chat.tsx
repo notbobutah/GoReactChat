@@ -158,7 +158,11 @@ export function Chat() {
   }, [busy]);
 
   return (
-    <div className="mx-auto flex h-dvh w-full max-w-6xl">
+    // Column on narrow screens, row from lg. The rail used to be `hidden` below
+    // lg, which took the résumé download and the agent panel off the page
+    // entirely — on a phone there was no way to reach either, and this link gets
+    // opened on phones.
+    <div className="mx-auto flex h-dvh w-full max-w-6xl flex-col lg:flex-row">
       <Sidebar />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -258,14 +262,20 @@ function Sidebar() {
     // fixed-height app shell; once the news panel made this column taller than
     // the viewport, without this the whole document scrolled and took the chat
     // input off screen with it.
-    <aside className="hidden h-dvh w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-black/10 px-6 py-6 lg:flex dark:border-white/15">
+    // Below lg the rail moves under the conversation (order-last) with a bounded
+    // height, so it is reachable without pushing the chat off the first screen.
+    // From lg it is the full-height left column it has always been.
+    <aside className="order-last flex max-h-72 w-full shrink-0 flex-col gap-5 overflow-y-auto border-t border-black/10 px-6 py-6 lg:order-none lg:h-dvh lg:max-h-none lg:w-72 lg:border-t-0 lg:border-r dark:border-white/15">
       <Image
         src="/pixar-pops.png"
         alt="Robert MacKay"
         width={240}
         height={240}
         priority
-        className="w-full rounded-xl object-cover"
+        // Capped. At full width this is ~290px of the rail before anything
+        // else, which pushed the live agent panel below the fold on a normal
+        // laptop — the reason it read as missing rather than as further down.
+        className="max-h-44 w-full rounded-xl object-cover object-top"
       />
 
       <div className="space-y-1">
@@ -274,6 +284,10 @@ function Sidebar() {
           CTO · Software Architect · AI-Native Platforms
         </p>
       </div>
+
+      {/* Above the static blurbs: it is the only part of this rail that changes,
+          and it is what the "AI agents" prompt asks the reader to look at. */}
+      <NewsPanel />
 
       <div className="space-y-2 text-xs">
         <p className="font-medium text-black/70 dark:text-white/70">Source code</p>
@@ -322,7 +336,6 @@ function Sidebar() {
         </a>
       </div>
 
-      <NewsPanel />
 
       <div className="mt-auto space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40">
         <p>Go · connect-go (gRPC / gRPC-Web / Connect)</p>

@@ -68,11 +68,24 @@ dev-server:
 ## migrate-remote: apply every migration to $DATABASE_URL (hosted Postgres)
 # `migrate` talks to the local container; this one uses a local psql client
 # against whatever DB_URL points at, so it works for Neon and friends.
+#
+# Schema changes go to the DIRECT endpoint, not the pooled one. Neon's pooled
+# host runs PgBouncer in transaction mode, which does not preserve session
+# state — the thing migrations, LISTEN/NOTIFY and advisory locks rely on. The
+# migrations here are plain CREATE/ALTER and have applied cleanly through the
+# pooler, so this is latent rather than broken; it is the next migration
+# needing a session that would fail, confusingly and in production.
+#
+# The direct host is the pooled one with `-pooler` removed, which is Neon's own
+# convention. MIGRATE_URL overrides the derivation for a provider that spells
+# it differently.
+MIGRATE_URL ?= $(subst -pooler,,$(DB_URL))
 migrate-remote:
 	@test -n "$(DB_URL)" || { echo "set DATABASE_URL first"; exit 1; }
+	@echo "applying to $$(echo '$(MIGRATE_URL)' | sed -E 's#.*@([^/]*)/.*#\1#')"
 	@for f in $$(ls migrations/*.sql | sort); do \
 		echo "applying $$f"; \
-		psql "$(DB_URL)" -q -v ON_ERROR_STOP=1 -f $$f || exit 1; \
+		psql "$(MIGRATE_URL)" -q -v ON_ERROR_STOP=1 -f $$f || exit 1; \
 	done
 
 ## dev-offline: run the backend with no database and no model calls

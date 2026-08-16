@@ -21,10 +21,55 @@ type PostgresStore struct {
 	pool *pgxpool.Pool
 }
 
+// Pool limits. The defaults are tuned for a database on the other side of a
+// LAN that is always awake; this one is neither.
+//
+// Neon compute scales to zero and its PgBouncer recycles connections, so a
+// pooled connection that has sat idle can be dead while still looking usable.
+// pgx retries, which is why nothing has visibly broken — but the failure that
+// does surface is a first-query error after a quiet period, which is the
+// hardest kind to reproduce. Bounding idle time and total lifetime replaces
+// that with a reconnect nobody notices.
+const (
+	// maxConns is deliberately small. The API runs one replica by design (see
+	// deploy/api.yaml), traffic is a handful of visitors, and every query here
+	// is a short indexed read or a single insert. A large pool would only hold
+	// idle connections open against a database billed for being awake.
+	maxConns = 8
+	// minConns is zero on purpose, against the instinct to keep one warm. The
+	// pool's health check restores the pool to MinConns, so a non-zero minimum
+	// combined with the idle timeout below would close a connection and
+	// immediately re-dial it, forever — a heartbeat that would keep a
+	// scale-to-zero compute awake and bill for the privilege of idling. The
+	// price of zero is one cold dial on the first message after a quiet
+	// period, paid by a visitor who is already waiting on a model call.
+	minConns = 0
+	// maxConnIdleTime is shorter than the intervals that matter here — nobody
+	// is watching this page continuously — so idle connections are released
+	// rather than held across the gaps.
+	maxConnIdleTime = 5 * time.Minute
+	// maxConnLifetime caps how long a connection can be reused even while busy,
+	// so a pooler-side recycle is never discovered mid-query.
+	maxConnLifetime = 30 * time.Minute
+	// healthCheckPeriod is how often the pool prunes what the two limits above
+	// have made stale.
+	healthCheckPeriod = time.Minute
+)
+
 // NewPostgresStore dials the database and verifies connectivity before
 // returning — a bad DATABASE_URL fails at boot, not on the first chat turn.
 func NewPostgresStore(ctx context.Context, dsn string) (*PostgresStore, error) {
-	pool, err := pgxpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse DATABASE_URL: %w", err)
+	}
+	cfg.MaxConns = maxConns
+	cfg.MinConns = minConns
+	cfg.MaxConnIdleTime = maxConnIdleTime
+	cfg.MaxConnLifetime = maxConnLifetime
+	cfg.HealthCheckPeriod = healthCheckPeriod
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("connect postgres: %w", err)
 	}

@@ -390,12 +390,13 @@ const SUGGESTIONS: { label: string; question: string }[] = [
   },
   {
     label: "AI agents",
-    // Leads with the agent running in THIS application, because that is the
-    // claim a reader can check on the spot — the panel beside the chat is the
-    // agent's live output. Asking the general question first invited a career
-    // summary, and buried the one piece of evidence in the room.
+    // Names the xAI agent outright. "The agent running in this application"
+    // was ambiguous — there are two, and the model reasonably led with the one
+    // answering the question, pushing the xAI agent to the second section. The
+    // reader can see that agent's output in the panel beside the chat, so it
+    // is the claim to open with.
     question:
-      "Start with the agent running in this application right now: how does it execute, and where does its tool loop actually run? Then cover his wider agent work and the evidence for it.",
+      "First, and in detail: the Ecosystem watch panel on this page is produced by an agent whose tool loop executes inside xAI, not in this application. Explain that — the single Responses API request, what runs server-side, and why there is no local agent loop or extra service. Only after that, cover the hand-written Go loop behind this chat and his wider agent work.",
   },
   {
     label: "Fit for this role",

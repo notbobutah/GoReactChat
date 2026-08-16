@@ -37,12 +37,28 @@ export function authHeaders(): HeadersInit {
   return { Authorization: `Bearer ${token}` };
 }
 
+const CONVERSATION_KEY = "lumi.conversationId";
+
 /** A conversation id per browser tab, so a reload resumes the same thread. */
 export function conversationId(): string {
-  const key = "lumi.conversationId";
-  const existing = window.sessionStorage.getItem(key);
+  const existing = window.sessionStorage.getItem(CONVERSATION_KEY);
   if (existing) return existing;
   const id = crypto.randomUUID();
-  window.sessionStorage.setItem(key, id);
+  window.sessionStorage.setItem(CONVERSATION_KEY, id);
+  return id;
+}
+
+/**
+ * Mint a fresh conversation id and return it.
+ *
+ * Nothing is created server-side here, deliberately. The service creates a
+ * conversation row on the first message of a turn, so an id that is never used
+ * costs nothing — whereas asking the server for an empty conversation up front
+ * would leave a row behind every time somebody clicked this and then left.
+ * The new thread begins when the agent actually runs.
+ */
+export function resetConversation(): string {
+  const id = crypto.randomUUID();
+  window.sessionStorage.setItem(CONVERSATION_KEY, id);
   return id;
 }

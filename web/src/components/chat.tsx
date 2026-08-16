@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { NewsPanel } from "@/components/news-panel";
-import { authHeaders, chatClient, conversationId } from "@/lib/chat-client";
+import { authHeaders, chatClient, conversationId, resetConversation } from "@/lib/chat-client";
 
 type Block = { kind: string; id: string; rendered: string };
 
@@ -59,6 +59,29 @@ export function Chat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streaming]);
+
+  /**
+   * Start a blank thread.
+   *
+   * Only the id changes here — no conversation is created server-side, because
+   * the service creates the row on the first message of a turn. So a reset that
+   * is never followed by a question leaves nothing behind, and the new thread
+   * begins when the agent actually runs.
+   *
+   * Any in-flight turn is aborted first: its tokens would otherwise keep
+   * arriving and land in the conversation the user just walked away from.
+   */
+  const startNew = useCallback(() => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    convIdRef.current = resetConversation();
+    setMessages([]);
+    setStreaming("");
+    setLiveBlocks([]);
+    setDraft("");
+    setError(null);
+    setBusy(false);
+  }, []);
 
   const send = useCallback(async (raw: string) => {
     const text = raw.trim();
@@ -202,12 +225,34 @@ export function Chat() {
       </div>
 
       {messages.length > 0 && (
-        <Suggestions
-          onPick={(q) => void send(q)}
-          disabled={busy}
-          className="border-t border-black/10 px-6 pt-3 dark:border-white/15"
-          compact
-        />
+        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-black/10 px-6 pt-3 dark:border-white/15">
+          {/* Not a prompt, so it is set apart from the prompt chips rather than
+              mixed in among them — clicking it does something to the page, not
+              to the conversation. */}
+          <button
+            type="button"
+            onClick={startNew}
+            title="Clear this conversation and start a new one"
+            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-black/20 px-3 py-1 text-[11px] text-black/55 transition hover:border-black/45 hover:text-black dark:border-white/25 dark:text-white/55 dark:hover:border-white/50 dark:hover:text-white"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-3 shrink-0"
+            >
+              <path d="M12 7a5 5 0 1 1-1.6-3.7" />
+              <path d="M12 1.5V4H9.5" />
+            </svg>
+            New conversation
+          </button>
+
+          <Suggestions onPick={(q) => void send(q)} disabled={busy} compact />
+        </div>
       )}
 
       <form

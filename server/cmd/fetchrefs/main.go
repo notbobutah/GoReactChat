@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -83,11 +84,46 @@ func fetch(client *http.Client, url string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse html: %w", err)
 	}
-	text := extractText(doc)
+	text := dropBreadcrumbs(joinOrphanBullets(extractText(doc)))
 	if strings.TrimSpace(text) == "" {
 		return "", fmt.Errorf("no text extracted")
 	}
 	return fmt.Sprintf("Source: %s\n\n%s", url, text), nil
+}
+
+// joinOrphanBullets reattaches a list marker to the text it introduces.
+//
+// walk writes "- " when it enters an <li>, but a list item whose first child is
+// a block element then writes a newline before any text — leaving the marker
+// alone on its line and the content on the next. Harmless to read, and not
+// harmless to index: a chunk boundary can fall between them, and every orphan
+// is a line of pure noise in a corpus that is inlined or embedded by the token.
+func joinOrphanBullets(s string) string {
+	return orphanBullet.ReplaceAllString(s, "\n- ")
+}
+
+var orphanBullet = regexp.MustCompile(`\n-[ \t]*\n[ \t]*`)
+
+// dropBreadcrumbs removes the trail of links these pages put above the title.
+//
+// <nav> is already skipped, but go.dev renders breadcrumbs as a plain list
+// inside <main>, so they survive and arrive as "Documentation / Tutorials /
+// <page title>" ahead of the first heading. That is chrome indexed as content:
+// a retrieval hit on it returns a chunk that says nothing, attributed to no
+// section.
+//
+// Everything before the first H1 goes. On these pages there is nothing else up
+// there — and if a page has no H1 at all the text is returned untouched, so a
+// differently-structured page loses nothing.
+func dropBreadcrumbs(s string) string {
+	i := strings.Index(s, "\n# ")
+	if i < 0 {
+		if strings.HasPrefix(s, "# ") {
+			return s
+		}
+		return s
+	}
+	return strings.TrimLeft(s[i+1:], "\n")
 }
 
 // extractText pulls the readable body out of a documentation page.

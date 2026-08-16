@@ -73,28 +73,6 @@ across AWS and GCP.
 
 ---
 
-## What this account does and does not cover
-
-**Two agent implementations, deliberately different.** GoReactChat contains
-both shapes of agent, which is the more useful signal than either alone. The
-chat runs a tool-use loop written by hand in Go against the Anthropic SDK —
-accumulating tool calls mid-stream, dispatching them, feeding results back, and
-discarding a "let me check" preamble once a retrieval tool returns. The news
-watcher does the opposite: a single request to xAI's Responses API declares the
-tools, and the model runs roughly fifteen web searches, reads and iterates on
-xAI's infrastructure. No loop, no scheduler and no extra service on this side.
-
-The second one is the more interesting engineering problem, because moving the
-loop off your own machine moves the risk rather than removing it. A scan takes
-about a minute, so the result cannot be returned in a response — it arrives over
-a server-streaming RPC the browser subscribes to. And it bills per tool call
-rather than per token, so the usual token budget does not bound it: spend is
-capped by frequency instead — it runs only while somebody is subscribed, once
-per interval, one scan at a time, with the last result persisted so a restart
-restores instead of rescanning. The digest reports its own tool-call count in
-the UI, on the principle that an autonomous agent whose cost is invisible is one
-nobody notices running away.
-
 **Kubernetes evidence is in the repository, not just on the résumé.** The
 Kubernetes and cloud experience described under the professional roles is
 commercial and therefore private — but GoReactChat is not, and it runs on
@@ -122,6 +100,28 @@ that the deployment is reachable.
 That is the difference between claiming Kubernetes and showing it: the decisions
 are legible, the trade-offs are written down next to the setting they explain,
 and a reader can check every one of them against a running deployment.
+
+**Two agent implementations, deliberately different.** GoReactChat contains
+both shapes of agent, which is the more useful signal than either alone. The
+chat runs a tool-use loop written by hand in Go against the Anthropic SDK —
+accumulating tool calls mid-stream, dispatching them, feeding results back, and
+discarding a "let me check" preamble once a retrieval tool returns. The news
+watcher does the opposite: a single request to xAI's Responses API declares the
+tools, and the model runs roughly fifteen web searches, reads and iterates on
+xAI's infrastructure. No loop, no scheduler and no extra service on this side.
+
+The second one is the more interesting engineering problem, because moving the
+loop off your own machine moves the risk rather than removing it. A scan takes
+about a minute, so the result cannot be returned in a response — it arrives over
+a server-streaming RPC the browser subscribes to. And it bills per tool call
+rather than per token, so the usual token budget does not bound it: spend is
+capped by frequency instead — it runs only while somebody is subscribed, once
+per interval, one scan at a time, with the last result persisted so a restart
+restores instead of rescanning. The digest reports its own tool-call count in
+the UI, on the principle that an autonomous agent whose cost is invisible is one
+nobody notices running away.
+
+## What this account does and does not cover
 
 **Public Go begins with this project.** Before GoReactChat the account has one
 Go repository — `on-xml-proxy`, about 10 KB of SOAP/XML examples from 2019.

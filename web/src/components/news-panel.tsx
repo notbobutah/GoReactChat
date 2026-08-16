@@ -24,6 +24,11 @@ export function NewsPanel() {
   // Distinguishes "connecting" from "connected and there is genuinely nothing
   // yet", which look identical without it.
   const [connected, setConnected] = useState(false);
+  // Closed by default. The rail is context beside the conversation, not the
+  // conversation — six expanded news items pushed everything else out of view,
+  // which is how the panel came to be hard to find in the first place. The
+  // count in the label is what makes a closed panel worth opening.
+  const [open, setOpen] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -92,62 +97,100 @@ export function NewsPanel() {
   // watcher disabled. Render nothing rather than an empty box.
   if (!digest && !scanning && !connected) return null;
 
+  const count = digest?.items.length ?? 0;
+
   return (
-    <section className="space-y-3 text-xs">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-medium text-black/70 dark:text-white/70">Ecosystem watch</p>
-        {scanning ? (
-          <span className="inline-flex items-center gap-1.5 text-black/45 dark:text-white/45">
-            <span className="size-1.5 animate-pulse rounded-full bg-current" />
-            scanning
+    <section className="text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-controls="ecosystem-watch-body"
+        className="flex w-full items-center gap-2 text-left"
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`size-3 shrink-0 text-black/40 transition-transform dark:text-white/40 ${
+            open ? "rotate-90" : ""
+          }`}
+        >
+          <path d="M4 2.5 8 6l-4 3.5" />
+        </svg>
+
+        <span className="font-medium text-black/70 dark:text-white/70">Ecosystem watch</span>
+
+        {count > 0 && (
+          <span className="rounded-full bg-black/[0.06] px-1.5 py-0.5 text-[10px] leading-none font-medium text-black/50 tabular-nums dark:bg-white/10 dark:text-white/50">
+            {count}
           </span>
-        ) : digest ? (
-          <span className="text-black/35 dark:text-white/35">{relative(digest.generatedAtUnix)}</span>
-        ) : null}
-      </div>
+        )}
 
-      <p className="leading-relaxed text-black/45 dark:text-white/45">
-        A research agent watching Go, gRPC and Protobuf. Its tool loop runs on
-        xAI&rsquo;s servers — this app subscribes and is pushed the result.
-      </p>
+        {/* The live state stays visible while collapsed — a scan in progress is
+            the one thing worth noticing without opening anything. */}
+        <span className="ml-auto text-black/35 dark:text-white/35">
+          {scanning ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-1.5 animate-pulse rounded-full bg-current" />
+              scanning
+            </span>
+          ) : digest ? (
+            relative(digest.generatedAtUnix)
+          ) : null}
+        </span>
+      </button>
 
-      {error && (
-        <p className="leading-relaxed text-amber-700/80 dark:text-amber-500/80">{error}</p>
-      )}
+      {open && (
+        <div id="ecosystem-watch-body" className="mt-3 space-y-3">
+          <p className="leading-relaxed text-black/45 dark:text-white/45">
+            A research agent watching Go, gRPC and Protobuf. Its tool loop runs on
+            xAI&rsquo;s servers — this app subscribes and is pushed the result.
+          </p>
 
-      {!digest && scanning && (
-        <p className="text-black/40 dark:text-white/40">First scan running — about a minute.</p>
-      )}
+          {error && (
+            <p className="leading-relaxed text-amber-700/80 dark:text-amber-500/80">{error}</p>
+          )}
 
-      {digest && (
-        <ul className="space-y-3">
-          {digest.items.map((item) => (
-            <li key={item.id} className="space-y-1">
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block font-medium text-black/75 underline decoration-black/15 underline-offset-2 hover:decoration-black/60 dark:text-white/75 dark:decoration-white/20 dark:hover:decoration-white/60"
-              >
-                {item.headline}
-              </a>
-              <p className="leading-relaxed text-black/45 dark:text-white/45">{item.summary}</p>
-              <p className="text-[10px] uppercase tracking-wide text-black/30 dark:text-white/30">
-                {item.topic} · {item.source}
-                {item.published ? ` · ${item.published}` : ""}
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+          {!digest && scanning && (
+            <p className="text-black/40 dark:text-white/40">First scan running — about a minute.</p>
+          )}
 
-      {digest && digest.toolCalls > 0 && (
-        // Shown on purpose. The agent bills per server-side tool call, and an
-        // autonomous agent whose cost is invisible is one nobody notices
-        // running away.
-        <p className="text-[10px] text-black/30 dark:text-white/30">
-          {digest.toolCalls} searches · {digest.totalTokens.toLocaleString()} tokens
-        </p>
+          {digest && (
+            <ul className="space-y-3">
+              {digest.items.map((item) => (
+                <li key={item.id} className="space-y-1">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block font-medium text-black/75 underline decoration-black/15 underline-offset-2 hover:decoration-black/60 dark:text-white/75 dark:decoration-white/20 dark:hover:decoration-white/60"
+                  >
+                    {item.headline}
+                  </a>
+                  <p className="leading-relaxed text-black/45 dark:text-white/45">{item.summary}</p>
+                  <p className="text-[10px] uppercase tracking-wide text-black/30 dark:text-white/30">
+                    {item.topic} · {item.source}
+                    {item.published ? ` · ${item.published}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {digest && digest.toolCalls > 0 && (
+            // Shown on purpose. The agent bills per server-side tool call, and an
+            // autonomous agent whose cost is invisible is one nobody notices
+            // running away.
+            <p className="text-[10px] text-black/30 dark:text-white/30">
+              {digest.toolCalls} searches · {digest.totalTokens.toLocaleString()} tokens
+            </p>
+          )}
+        </div>
       )}
     </section>
   );

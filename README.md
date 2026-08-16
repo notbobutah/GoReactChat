@@ -9,6 +9,15 @@ is integrated into the Next app and written in TypeScript. Here the Next app is
 a pure client — every byte of chat logic lives in the Go service, and the
 browser reaches it over the contract in `proto/`.
 
+It runs **two agents, built the opposite way round**, and the contrast is the
+part worth reading (§4, §11). The chat's tool-use loop is hand-written in Go,
+because the exact sequencing there is the product. The news watcher owns no loop
+at all: one request declares the tools and the loop executes inside **xAI's
+Agent Tools**, roughly fifteen web searches per scan, none of them dispatched
+here — a hosted agent framework in production, not a plan to adopt one. Its
+results reach the browser as a push over a streaming RPC, because a scan takes
+about a minute and cannot be returned in a response.
+
 ---
 
 ## 1. Build environment
@@ -126,13 +135,14 @@ lumi-go/
 ├── buf.yaml  buf.gen.yaml          codegen + lint config
 ├── data/                           résumé + job description (grounding, §5)
 │   └── reference/                  fetched Go docs (gitignored, `make refs`)
-├── migrations/0001_init.sql        lumi.conversations, lumi.messages
+├── migrations/                     0001 schema … 0004 prompt-cache columns
 ├── docker-compose.yml              local Postgres on :5433
 ├── Makefile                        every workflow command
 ├── .github/workflows/
-│   └── publish-image.yml           build + push to ghcr.io
+│   ├── publish-image.yml           build + push both images to ghcr.io
+│   └── deploy-dev.yml              apply deploy/, restart, smoke-test
 ├── server/
-│   ├── Dockerfile  .dockerignore   backend image (build context is server/)
+│   ├── Dockerfile                  backend image (build context is the repo root)
 │   ├── cmd/lumid/main.go           composition root
 │   ├── cmd/pdf2md/main.go          PDF résumé → structured markdown
 │   ├── cmd/fetchrefs/main.go       tip.golang.org → cached plain text
@@ -147,12 +157,17 @@ lumi-go/
 │       ├── chat/                   one turn: session.go, title.go
 │       ├── orchestrator/           loop.go, types.go, models.go, ratelimit.go
 │       ├── model/                  anthropic.go, echo.go
+│       ├── budget/                 service-wide token cap, persisted
+│       ├── newsagent/              the xAI agent: request, prompt, schema
+│       ├── newswatch/              when a scan may run, and who is told
 │       └── store/                  store.go, postgres.go, memory.go
+├── deploy/                         Kubernetes manifests (§12)
 └── web/
     └── src/
         ├── gen/                    generated (TypeScript)
         ├── lib/chat-client.ts      transport, auth headers, conversation id
         ├── components/chat.tsx     the chat surface
+        ├── components/news-panel.tsx  subscribes to the agent's push stream
         └── app/page.tsx
 ```
 
@@ -165,13 +180,16 @@ lumi-go/
 ```
 browser (Next.js)                          Go service (:8080)
 ┌──────────────────────┐                  ┌──────────────────────────────────┐
-│ components/chat.tsx  │                  │ h2c ▸ CORS ▸ connect handler     │
+│ components/chat.tsx  │  SendMessage     │ h2c ▸ CORS ▸ connect handler     │
 │ lib/chat-client.ts   │ ── Connect ────▶ │   └─ auth.Interceptor            │
 │  @connectrpc/        │   HTTP/1.1       │        └─ service.ChatService    │
-│  connect-web         │   or HTTP/2      │             └─ chat.Session      │
-└──────────────────────┘                  │                  ├─ orchestrator │
-                                          │                  ├─ model        │
-   other Go services ── native gRPC ────▶ │                  └─ store        │
+│  connect-web         │   or HTTP/2      │             ├─ chat.Session      │
+│                      │                  │             │    ├─ orchestrator │──▶ Anthropic
+│ components/          │  WatchNews       │             │    ├─ model        │    (loop runs HERE)
+│ news-panel.tsx       │ ◀── stream ───── │             │    └─ store        │
+└──────────────────────┘  (server push)   │             └─ newswatch.Watcher │
+                                          │                  └─ newsagent    │──▶ xAI Agent Tools
+   other Go services ── native gRPC ────▶ │                                  │    (loop runs THERE)
                                           └──────────────────────────────────┘
 ```
 
@@ -210,6 +228,10 @@ Swapping Anthropic for another provider is one new file in `model/`.
 | `internal/orchestrator` | The streaming tool-use loop, model-client seam, tier→model resolution, rate limiting. | Know about persistence or surfaces. |
 | `internal/model` | Provider adaptation: SDK params in, normalized `StreamEvent`s out. | Decide anything about a turn. |
 | `internal/store` | Conversation + message persistence, tenant scoping, idempotent creates. | Interpret content. |
+| `internal/budget` | The service-wide spend cap: restore at boot, count a billable equivalent, refuse when spent. | Decide what a token costs — the multipliers are the provider's, on `orchestrator.Usage`. |
+| `internal/corpus` `internal/rag` `internal/reference` | Loading, chunking, embedding and searching the grounding documents (§5). | Talk to a model — retrieval is a tool the loop calls. |
+| `internal/newsagent` | The xAI agent: one request, the prompt, the enforced response schema (§11). | Run a loop. That is the point — the loop executes on xAI. |
+| `internal/newswatch` | When a scan may run, one at a time, and fanning the result out to subscribers. | Know about proto or HTTP — the service package adapts it to `WatchNews`. |
 
 ### The lifecycle of one turn
 
@@ -266,24 +288,53 @@ Each is an interface with a real second implementation, so tests never need the 
 | `auth.Verifier` | — | `DevBearerVerifier` (insecure stub) | Expona-minted panel token verifier. |
 | `orchestrator.StreamingClient` | `model.AnthropicClient` | `model.EchoClient` | Another provider. |
 | `store.Store` | `PostgresStore` | `MemoryStore` | — |
-| `orchestrator.ToolDef` | (none registered) | — | Capability tools; `Recall`/`Writes` flags already drive the guard rails. |
+| `orchestrator.ToolDef` | `search_documents`, `search_go_docs` (when `RAG=on`) | — | Capability tools; `Recall`/`Writes` flags already drive the guard rails. |
+| `orchestrator.TokenBudget` | `budget.Counter` (persisted) | `budget.Unlimited` | — |
+| `newswatch.Scanner` | `newsagent.Agent` (loop runs on xAI) | fake scanner in tests | Another hosted agent provider. |
+| `newswatch.Store` | `store.PostgresStore` | nil — the watcher runs unpersisted | — |
 
-### Why there is no agent framework
+### Two agent implementations, and why they differ
 
-`loop.go` is the agent loop, and it stays hand-written on purpose. The parts
-that matter here — the recall guard rail, thinking-block emission,
-persist-only-on-clean-end, tenant scope threaded through every call — are
-product behaviour, not generic plumbing, and a framework would either duplicate
-the loop or force those semantics through someone else's abstraction. Adding
-tools means adding `ToolDef`s, not adopting a runtime.
+This service runs two agents, deliberately built the opposite way round. The
+contrast is the design decision worth reading, not either one on its own.
 
-Revisit when the control flow genuinely outgrows a `for` loop: multi-agent
-fan-out, delegation, or branching pipelines. At that point the options worth
-weighing are `anthropic-sdk-go/toolrunner` (first-party tool loop),
-`cloudwego/eino` (typed graph orchestration), or Managed Agents (Anthropic runs
-the loop and hosts the sandbox — `client.Beta.Agents`/`Sessions`). For tool
-interop specifically, an MCP client maps onto the existing `ToolDef` seam
-without a framework at all.
+**The chat loop is hand-written** (`internal/orchestrator/loop.go`). What
+matters in a turn here is product behaviour, not generic plumbing: the recall
+guard rail, thinking-block emission, persist-only-on-clean-end, tenant scope
+threaded through every call. A framework would either duplicate that loop or
+force those semantics through someone else's abstraction, and adding a
+capability means adding a `ToolDef`, not adopting a runtime. It is also the
+half where the exact sequencing is the product — the discard of a preamble
+happens at one specific point between a tool returning and the next round
+streaming, and that point is not a configuration option.
+
+**The news watcher uses a hosted agent framework** — xAI's Agent Tools (§11).
+One request to `/v1/responses` declares the tools; the searching, reading and
+iterating then run on xAI's infrastructure, roughly fifteen web searches per
+scan, none of them dispatched here. There is no local loop for it, and no extra
+service was deployed to get one.
+
+The rule that separates them is ownership of the sequence. Where the order of
+operations *is* the product, the loop stays here. Where the work is open-ended
+retrieval and only the finished answer matters, running the loop is undifferentiated
+effort and someone else's infrastructure does it better — the whole apparatus of
+retries, partial state and runaway-iteration limits stops being ours to get right.
+
+What moving the loop away actually costs is worth being precise about, because
+it is not nothing: latency stops being controllable (a scan takes about a
+minute, so the result cannot be returned in a response and arrives over a
+streaming subscription instead), and billing changes shape — per tool call
+rather than per token, which is why the service-wide token budget does not bound
+it and a frequency limit does. Both consequences are handled in
+`internal/newswatch`, and both are consequences of the choice rather than
+surprises after it.
+
+If the hand-written side ever outgrows a `for` loop — multi-agent fan-out,
+delegation, branching pipelines — the options worth weighing are
+`anthropic-sdk-go/toolrunner` (first-party tool loop), `cloudwego/eino` (typed
+graph orchestration), or Managed Agents (Anthropic runs the loop and hosts the
+sandbox). For tool interop specifically, an MCP client maps onto the existing
+`ToolDef` seam without a framework at all.
 
 ---
 
@@ -477,10 +528,16 @@ Read from the environment only — see `.env.example`.
 | `EFFORT` | `medium` | Thinking depth / token spend. Raise to `high`/`xhigh` for harder work. |
 | `RATE_LIMIT` / `RATE_LIMIT_WINDOW_SECONDS` | `6` / `60` | Per caller (user × workspace × tier). |
 | `GLOBAL_RATE_LIMIT` | `10` | Per window across **all** callers. |
-| `TOKEN_BUDGET` | `2000000` | Total tokens the deployment may ever spend. `0` disables. |
+| `TOKEN_BUDGET` | `2000000` | Total tokens the deployment may ever spend, billable-equivalent. `0` disables. |
+| `PROMPT_CACHING` | `on` | Cache the tools+system prefix at the provider. `off` disables (§8). |
 | `MAX_INPUT_CHARS` | `2000` | Per-message ceiling, rejected before any model call. |
 | `MAX_MESSAGES_PER_CONVERSATION` | `40` | Per-thread ceiling. |
-| `GROK_API_KEY` / `GROK_BASE_URL` / `GROK_MODEL` | — | xAI credentials, carried in `.env` for a future provider client. **Nothing reads them yet.** |
+| `GROK_API_KEY` | — | xAI credential. **Enables the news agent** (§11) — its tool loop runs on xAI. Unset means no watcher and `WatchNews` reports `Unimplemented`; nothing else is affected. |
+| `GROK_BASE_URL` | `https://api.x.ai` | `/v1/responses` is appended. |
+| `NEWS_MODEL` | `grok-4.6` | The model with server-side agent tools. |
+| `NEWS_INTERVAL_MINUTES` | `240` | Minimum time between scans — the cost control that binds, since a scan bills per tool call rather than per token (§11). |
+| `NEWS_TIMEOUT_SECONDS` | `240` | Bounds one scan. |
+| `NEWS_MAX_TURNS` / `NEWS_MAX_ITEMS` | `12` / `6` | Rounds of server-side tool use, and digest size. |
 | `DATA_DIR` | `../data` | Grounding documents (§5). |
 | `PROJECT_DOC` | `../README.md` | Delivered-work document indexed as evidence (§5). Empty disables it. |
 | `RAG` | `on` | `off` inlines the documents instead of retrieving them. |

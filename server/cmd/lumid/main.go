@@ -27,6 +27,8 @@ import (
 	"github.com/expona-ai/lumi-go/server/internal/config"
 	"github.com/expona-ai/lumi-go/server/internal/corpus"
 	"github.com/expona-ai/lumi-go/server/internal/model"
+	"github.com/expona-ai/lumi-go/server/internal/newsagent"
+	"github.com/expona-ai/lumi-go/server/internal/newswatch"
 	"github.com/expona-ai/lumi-go/server/internal/orchestrator"
 	"github.com/expona-ai/lumi-go/server/internal/rag"
 	"github.com/expona-ai/lumi-go/server/internal/reference"
@@ -236,10 +238,49 @@ func run(logger *slog.Logger) error {
 	logger.Warn("AUTH_MODE=dev — the bearer token is trusted as the user id; never run this outside local development")
 	verifier := &auth.DevBearerVerifier{DefaultWorkspaceID: cfg.DefaultWorkspaceID}
 
+	// --- news watcher --------------------------------------------------------
+	// A research agent whose tool loop runs on xAI's servers: one request
+	// declares the tools, and the searching, reading and iterating happen there.
+	// Nothing here orchestrates it, which is why an agent needs no new service.
+	//
+	// Optional. No key means no watcher, and WatchNews reports Unimplemented —
+	// a deployment without an xAI account still boots and still chats.
+	chatSvc := service.NewChatService(st, session, logger, cfg.MaxInputChars)
+	if cfg.GrokAPIKey == "" {
+		logger.Info("news watcher disabled — GROK_API_KEY is unset")
+	} else {
+		agent := newsagent.New(cfg.GrokAPIKey)
+		agent.Model = cfg.NewsModel
+		agent.Endpoint = strings.TrimRight(cfg.GrokBaseURL, "/") + "/v1/responses"
+		agent.MaxTurns = cfg.NewsMaxTurns
+		agent.MaxItems = cfg.NewsMaxItems
+		agent.HTTP = &http.Client{Timeout: cfg.NewsTimeout + 30*time.Second}
+
+		// Only the Postgres store persists digests. On the memory store the
+		// watcher still runs; it just rescans on every restart, which is
+		// acceptable locally and would not be in production.
+		var digestStore newswatch.Store
+		if ps, ok := st.(*store.PostgresStore); ok {
+			digestStore = ps
+		}
+
+		watcher := newswatch.New(ctx, newswatch.Options{
+			Scanner:  agent,
+			Store:    digestStore,
+			Interval: cfg.NewsInterval,
+			Timeout:  cfg.NewsTimeout,
+			Logger:   logger,
+		})
+		chatSvc = chatSvc.WithNewsWatcher(watcher)
+		logger.Info("news watcher enabled",
+			"model", agent.Model, "interval", cfg.NewsInterval,
+			"max_turns", agent.MaxTurns, "persisted", digestStore != nil)
+	}
+
 	// --- http ----------------------------------------------------------------
 	mux := http.NewServeMux()
 	path, handler := chatv1connect.NewChatServiceHandler(
-		service.NewChatService(st, session, logger, cfg.MaxInputChars),
+		chatSvc,
 		connect.WithInterceptors(auth.NewInterceptor(verifier)),
 	)
 	mux.Handle(path, handler)

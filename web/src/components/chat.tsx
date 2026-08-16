@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { NewsPanel } from "@/components/news-panel";
 import { authHeaders, chatClient, conversationId } from "@/lib/chat-client";
 
 type Block = { kind: string; id: string; rendered: string };
@@ -316,6 +317,8 @@ function Sidebar() {
           Download PDF
         </a>
       </div>
+
+      <NewsPanel />
 
       <div className="mt-auto space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40">
         <p>Go · connect-go (gRPC / gRPC-Web / Connect)</p>

@@ -62,3 +62,23 @@ data:
   # per turn than the last. This bounds that curve without needing to know who
   # the visitor is.
   MAX_MESSAGES_PER_CONVERSATION: "40"
+
+  # --- news watcher ---------------------------------------------------------
+  # A research agent for Go/gRPC/Protobuf news whose tool loop runs on xAI's
+  # servers: one request declares the tools, and the searching and iterating
+  # happen there. No new service, no local agent loop.
+  #
+  # NEWS_INTERVAL_MINUTES is the cost control that actually matters here, and it
+  # is not the token budget. A scan runs a dozen or more billed web searches, so
+  # spend is bounded by how often a scan may happen — not by tokens. Four hours
+  # is at most six scans a day no matter how many people visit.
+  #
+  # The watcher also only scans while somebody is subscribed, and the last
+  # digest is persisted, so a restart restores rather than rescans. Without that
+  # a crash loop would be a scan loop.
+  NEWS_MODEL: "grok-4.6"
+  NEWS_INTERVAL_MINUTES: "240"
+  NEWS_TIMEOUT_SECONDS: "240"
+  # Caps rounds of server-side tool use inside a single scan.
+  NEWS_MAX_TURNS: "12"
+  NEWS_MAX_ITEMS: "6"

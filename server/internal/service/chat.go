@@ -18,6 +18,7 @@ import (
 	"github.com/expona-ai/lumi-go/server/gen/lumi/chat/v1/chatv1connect"
 	"github.com/expona-ai/lumi-go/server/internal/auth"
 	"github.com/expona-ai/lumi-go/server/internal/chat"
+	"github.com/expona-ai/lumi-go/server/internal/newswatch"
 	"github.com/expona-ai/lumi-go/server/internal/orchestrator"
 	"github.com/expona-ai/lumi-go/server/internal/store"
 )
@@ -29,6 +30,9 @@ type ChatService struct {
 	logger  *slog.Logger
 	// maxInputChars bounds a single message. Zero means unbounded.
 	maxInputChars int
+	// news is optional. Nil means the deployment has no news watcher and
+	// WatchNews reports Unimplemented rather than failing at runtime.
+	news *newswatch.Watcher
 }
 
 func NewChatService(st store.Store, session *chat.Session, logger *slog.Logger, maxInputChars int) *ChatService {
@@ -36,6 +40,14 @@ func NewChatService(st store.Store, session *chat.Session, logger *slog.Logger, 
 		logger = slog.Default()
 	}
 	return &ChatService{store: st, session: session, logger: logger, maxInputChars: maxInputChars}
+}
+
+// WithNewsWatcher enables the WatchNews endpoint. Separate from the constructor
+// because the watcher is optional: the chat service is complete without it, and
+// a deployment with no xAI key should still start.
+func (s *ChatService) WithNewsWatcher(w *newswatch.Watcher) *ChatService {
+	s.news = w
+	return s
 }
 
 var _ chatv1connect.ChatServiceHandler = (*ChatService)(nil)

@@ -586,7 +586,7 @@ make dev-web
 | `refs` | Fetch the Go documentation into `data/reference/`. |
 | `resume-md` / `rag-check` | PDF → markdown; print what retrieval returns for sample questions. |
 | `image` / `image-web` / `image-run` / `image-web-run` / `image-push` / `image-push-multi` | Container build, local run, and registry push (§10). |
-| `deploy-dry-run` / `deploy` | Validate or apply `deploy/` against the `dev-next` cluster (§11). |
+| `deploy-dry-run` / `deploy` | Validate or apply `deploy/` against the `dev-next` cluster (§12). |
 
 ### Calling it by hand
 
@@ -711,7 +711,77 @@ job type-checks and lints before building; the backend job runs `go build`,
 
 ---
 
-## 11. Deployment
+## 11. The news agent
+
+A second agent lives beside the chat: it watches Go, gRPC and Protobuf for
+releases, advisories and accepted proposals, and pushes what it finds to the UI.
+
+**Its loop does not run here.** The usual shape for this is a local agent
+framework — you own a loop that calls a model, reads the tool calls it asks for,
+executes the searches, feeds results back, and repeats. That loop is most of the
+code and all of the operational risk. xAI's Agent Tools move it server-side:
+one request to `/v1/responses` declares which tools the model may use, and the
+searching, reading and iterating happen on their infrastructure. A scan here
+routinely runs a dozen or more web searches; this process dispatches none of
+them.
+
+What is left is the part that is genuinely ours, and it is the interesting part:
+
+| Ours | Where | Why |
+|---|---|---|
+| What to ask for | `internal/newsagent/prompt.go` | What counts as news, primary sources over articles, and the standing rule that every claim carries a link somebody can open. An unverifiable claim presented as news is the one failure mode of a research agent that matters. |
+| What shape the answer takes | the same file | A `strict` JSON schema, enforced by the provider — the digest arrives parseable or not at all. No prose to strip, no partial JSON to repair. |
+| When it may run | `internal/newswatch` | Cost control. See below. |
+| Who hears about it | `WatchNews`, a server-streaming RPC | A scan takes about a minute, which is far too long to hold a request open for. The result has to arrive as a notification. |
+
+### Notification, not polling
+
+`rpc WatchNews(WatchNewsRequest) returns (stream NewsEvent)`. The client
+subscribes and the server pushes: the current state on connect, a state change
+when a scan starts, the digest when it lands, an error if it fails. The first
+event on any stream is always a snapshot, so a client that connects mid-scan or
+hours later renders immediately instead of waiting for the next change.
+
+The browser side (`web/src/components/news-panel.tsx`) reconnects with capped
+backoff. A subscription is open-ended and the ingress closes an idle connection
+at ten minutes, so the stream ending is the normal case, not a failure —
+without reconnection the panel silently stops updating and looks fine while
+being wrong.
+
+### What bounds the spend
+
+The token budget (§8) does not, and that is the point worth understanding: a
+scan is billed per server-side tool call, and the tokens barely move the number.
+So the controls are about *frequency*, not size:
+
+- **It scans only while somebody is subscribed.** An unopened page costs nothing.
+- **At most one scan per `NEWS_INTERVAL_MINUTES`** (four hours in production —
+  at most six scans a day regardless of traffic).
+- **Exactly one scan at a time**, however many people are watching. Ten
+  simultaneous visitors cost one scan.
+- **The last digest is persisted**, so a restart restores instead of rescanning.
+  Without that, a crash loop is a scan loop.
+- **A failed scan starts the interval too.** Restarting it only on success would
+  retry a broken provider on every page load, which is the expensive way to
+  discover an outage.
+
+The digest carries its own `tool_calls` and token count, and the UI displays
+them. An autonomous agent whose cost is invisible is one nobody notices running
+away.
+
+Measured on a real scan: ~15 web searches, ~128k tokens, about a minute of wall
+clock.
+
+### Configuration
+
+`GROK_API_KEY` enables it. With no key there is no watcher, `WatchNews` reports
+`Unimplemented`, and the panel renders nothing — the rest of the service is
+unaffected. `NEWS_MODEL`, `NEWS_INTERVAL_MINUTES`, `NEWS_TIMEOUT_SECONDS`,
+`NEWS_MAX_TURNS` and `NEWS_MAX_ITEMS` tune the rest (§7).
+
+---
+
+## 12. Deployment
 
 Deployed to the **`dev-next`** namespace at **https://rob.expona.ai**.
 `deploy/` holds the manifests and is the single source of truth — CI applies
@@ -759,7 +829,7 @@ on. It needs one repository secret, `KUBE_CONFIG_DEV` (base64 kubeconfig).
 
 ---
 
-## 12. Relationship to lumi-neo
+## 13. Relationship to lumi-neo
 
 | lumi-neo (TypeScript) | lumi-go (Go) |
 |---|---|

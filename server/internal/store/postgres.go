@@ -9,6 +9,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/expona-ai/lumi-go/server/internal/newsagent"
 )
 
 // PostgresStore is the production Store. Every statement carries the scope
@@ -289,6 +291,64 @@ func (s *PostgresStore) RecordTokens(ctx context.Context, inputTokens, outputTok
 		INSERT INTO lumi.token_usage (input_tokens, output_tokens) VALUES ($1, $2)
 	`, inputTokens, outputTokens); err != nil {
 		return fmt.Errorf("insert token usage: %w", err)
+	}
+	return nil
+}
+
+// --- news digest --------------------------------------------------------------
+// Backs the news watcher (internal/newswatch). Persisted for one reason: an
+// agent that costs money per run must not rescan every time a pod restarts.
+
+// LoadDigest returns the stored digest, or nil when none has been saved.
+func (s *PostgresStore) LoadDigest(ctx context.Context) (*newsagent.Digest, error) {
+	var (
+		d     newsagent.Digest
+		items []byte
+	)
+	err := s.pool.QueryRow(ctx, `
+		SELECT digest_id, generated_at, tool_calls, total_tokens, items
+		FROM lumi.news_digest WHERE id = 1
+	`).Scan(&d.ID, &d.GeneratedAt, &d.ToolCalls, &d.TotalTokens, &items)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// Never scanned. Not an error — the watcher starts cold and scans on
+		// the first subscriber.
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("load news digest: %w", err)
+	}
+	if err := json.Unmarshal(items, &d.Items); err != nil {
+		return nil, fmt.Errorf("decode news digest items: %w", err)
+	}
+	// Ids are derived from the URL rather than stored, so a change to how they
+	// are computed cannot leave stale ones in the database.
+	for i := range d.Items {
+		d.Items[i].ID = newsagent.ItemID(d.Items[i].URL)
+	}
+	return &d, nil
+}
+
+// SaveDigest replaces the stored digest.
+func (s *PostgresStore) SaveDigest(ctx context.Context, d *newsagent.Digest) error {
+	if d == nil {
+		return nil
+	}
+	items, err := json.Marshal(d.Items)
+	if err != nil {
+		return fmt.Errorf("encode news digest items: %w", err)
+	}
+	if _, err := s.pool.Exec(ctx, `
+		INSERT INTO lumi.news_digest (id, digest_id, generated_at, tool_calls, total_tokens, items, updated_at)
+		VALUES (1, $1, $2, $3, $4, $5, now())
+		ON CONFLICT (id) DO UPDATE SET
+			digest_id    = EXCLUDED.digest_id,
+			generated_at = EXCLUDED.generated_at,
+			tool_calls   = EXCLUDED.tool_calls,
+			total_tokens = EXCLUDED.total_tokens,
+			items        = EXCLUDED.items,
+			updated_at   = now()
+	`, d.ID, d.GeneratedAt, d.ToolCalls, d.TotalTokens, items); err != nil {
+		return fmt.Errorf("save news digest: %w", err)
 	}
 	return nil
 }

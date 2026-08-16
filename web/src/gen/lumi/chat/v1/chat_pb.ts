@@ -2,8 +2,8 @@
 // @generated from file lumi/chat/v1/chat.proto (package lumi.chat.v1, syntax proto3)
 /* eslint-disable */
 
-import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
-import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { GenEnum, GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
+import { enumDesc, fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
 import type { Timestamp } from "@bufbuild/protobuf/wkt";
 import { file_google_protobuf_struct, file_google_protobuf_timestamp } from "@bufbuild/protobuf/wkt";
 import type { JsonObject, Message as Message$1 } from "@bufbuild/protobuf";
@@ -12,7 +12,7 @@ import type { JsonObject, Message as Message$1 } from "@bufbuild/protobuf";
  * Describes the file lumi/chat/v1/chat.proto.
  */
 export const file_lumi_chat_v1_chat: GenFile = /*@__PURE__*/
-  fileDesc("ChdsdW1pL2NoYXQvdjEvY2hhdC5wcm90bxIMbHVtaS5jaGF0LnYxIn4KElNlbmRNZXNzYWdlUmVxdWVzdBIXCg9jb252ZXJzYXRpb25faWQYASABKAkSDAoEdGV4dBgCIAEoCRItCgthdHRhY2htZW50cxgDIAMoCzIYLmx1bWkuY2hhdC52MS5BdHRhY2htZW50EhIKCnByb2plY3RfaWQYBCABKAkiQwoKQXR0YWNobWVudBIQCghhc3NldF9pZBgBIAEoCRIQCghmaWxlbmFtZRgCIAEoCRIRCgltaW1lX3R5cGUYAyABKAkiwAIKCUNoYXRFdmVudBIpCgV0b2tlbhgBIAEoCzIYLmx1bWkuY2hhdC52MS5Ub2tlbkV2ZW50SAASKQoFYmxvY2sYAiABKAsyGC5sdW1pLmNoYXQudjEuQmxvY2tFdmVudEgAEjoKDmRpc2NhcmRfYnVmZmVyGAMgASgLMiAubHVtaS5jaGF0LnYxLkRpc2NhcmRCdWZmZXJFdmVudEgAEicKBGRvbmUYBCABKAsyFy5sdW1pLmNoYXQudjEuRG9uZUV2ZW50SAASKQoFZXJyb3IYBSABKAsyGC5sdW1pLmNoYXQudjEuRXJyb3JFdmVudEgAEkQKE2NvbnZlcnNhdGlvbl90aXRsZWQYBiABKAsyJS5sdW1pLmNoYXQudjEuQ29udmVyc2F0aW9uVGl0bGVkRXZlbnRIAEIHCgVldmVudCIvCgpUb2tlbkV2ZW50Eg8KB2NvbnRlbnQYASABKAkSEAoIcmVuZGVyZWQYAiABKAkiXwoKQmxvY2tFdmVudBIMCgRraW5kGAEgASgJEgoKAmlkGAIgASgJEhAKCHJlbmRlcmVkGAMgASgJEiUKBGRhdGEYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IhQKEkRpc2NhcmRCdWZmZXJFdmVudCILCglEb25lRXZlbnQiKwoKRXJyb3JFdmVudBIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkiQQoXQ29udmVyc2F0aW9uVGl0bGVkRXZlbnQSFwoPY29udmVyc2F0aW9uX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJIvkBCgxDb252ZXJzYXRpb24SCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDgoGc3RhdHVzGAMgASgJEhUKDW1lc3NhZ2VfY291bnQYBCABKAUSEgoKcHJvamVjdF9pZBgFIAEoCRIzCg9sYXN0X21lc3NhZ2VfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIo4BCgdNZXNzYWdlEgoKAmlkGAEgASgJEgwKBHJvbGUYAiABKAkSDwoHY29udGVudBgDIAEoCRIoCgZibG9ja3MYBCADKAsyGC5sdW1pLmNoYXQudjEuQmxvY2tFdmVudBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI9ChhMaXN0Q29udmVyc2F0aW9uc1JlcXVlc3QSDQoFbGltaXQYASABKAUSEgoKcHJvamVjdF9pZBgCIAEoCSJOChlMaXN0Q29udmVyc2F0aW9uc1Jlc3BvbnNlEjEKDWNvbnZlcnNhdGlvbnMYASADKAsyGi5sdW1pLmNoYXQudjEuQ29udmVyc2F0aW9uIi0KEkdldE1lc3NhZ2VzUmVxdWVzdBIXCg9jb252ZXJzYXRpb25faWQYASABKAkiPgoTR2V0TWVzc2FnZXNSZXNwb25zZRInCghtZXNzYWdlcxgBIAMoCzIVLmx1bWkuY2hhdC52MS5NZXNzYWdlIkMKGVJlbmFtZUNvbnZlcnNhdGlvblJlcXVlc3QSFwoPY29udmVyc2F0aW9uX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJIk4KGlJlbmFtZUNvbnZlcnNhdGlvblJlc3BvbnNlEjAKDGNvbnZlcnNhdGlvbhgBIAEoCzIaLmx1bWkuY2hhdC52MS5Db252ZXJzYXRpb24iNQoaQXJjaGl2ZUNvbnZlcnNhdGlvblJlcXVlc3QSFwoPY29udmVyc2F0aW9uX2lkGAEgASgJIh0KG0FyY2hpdmVDb252ZXJzYXRpb25SZXNwb25zZSI0ChlEZWxldGVDb252ZXJzYXRpb25SZXF1ZXN0EhcKD2NvbnZlcnNhdGlvbl9pZBgBIAEoCSI2ChpEZWxldGVDb252ZXJzYXRpb25SZXNwb25zZRIYChBkZWxldGVkX21lc3NhZ2VzGAEgASgFMtEECgtDaGF0U2VydmljZRJKCgtTZW5kTWVzc2FnZRIgLmx1bWkuY2hhdC52MS5TZW5kTWVzc2FnZVJlcXVlc3QaFy5sdW1pLmNoYXQudjEuQ2hhdEV2ZW50MAESZAoRTGlzdENvbnZlcnNhdGlvbnMSJi5sdW1pLmNoYXQudjEuTGlzdENvbnZlcnNhdGlvbnNSZXF1ZXN0GicubHVtaS5jaGF0LnYxLkxpc3RDb252ZXJzYXRpb25zUmVzcG9uc2USUgoLR2V0TWVzc2FnZXMSIC5sdW1pLmNoYXQudjEuR2V0TWVzc2FnZXNSZXF1ZXN0GiEubHVtaS5jaGF0LnYxLkdldE1lc3NhZ2VzUmVzcG9uc2USZwoSUmVuYW1lQ29udmVyc2F0aW9uEicubHVtaS5jaGF0LnYxLlJlbmFtZUNvbnZlcnNhdGlvblJlcXVlc3QaKC5sdW1pLmNoYXQudjEuUmVuYW1lQ29udmVyc2F0aW9uUmVzcG9uc2USagoTQXJjaGl2ZUNvbnZlcnNhdGlvbhIoLmx1bWkuY2hhdC52MS5BcmNoaXZlQ29udmVyc2F0aW9uUmVxdWVzdBopLmx1bWkuY2hhdC52MS5BcmNoaXZlQ29udmVyc2F0aW9uUmVzcG9uc2USZwoSRGVsZXRlQ29udmVyc2F0aW9uEicubHVtaS5jaGF0LnYxLkRlbGV0ZUNvbnZlcnNhdGlvblJlcXVlc3QaKC5sdW1pLmNoYXQudjEuRGVsZXRlQ29udmVyc2F0aW9uUmVzcG9uc2VCrAEKEGNvbS5sdW1pLmNoYXQudjFCCUNoYXRQcm90b1ABWjtnaXRodWIuY29tL2V4cG9uYS1haS9sdW1pLWdvL3NlcnZlci9nZW4vbHVtaS9jaGF0L3YxO2NoYXR2MaICA0xDWKoCDEx1bWkuQ2hhdC5WMcoCDEx1bWlcQ2hhdFxWMeICGEx1bWlcQ2hhdFxWMVxHUEJNZXRhZGF0YeoCDkx1bWk6OkNoYXQ6OlYxYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
+  fileDesc("ChdsdW1pL2NoYXQvdjEvY2hhdC5wcm90bxIMbHVtaS5jaGF0LnYxIn4KElNlbmRNZXNzYWdlUmVxdWVzdBIXCg9jb252ZXJzYXRpb25faWQYASABKAkSDAoEdGV4dBgCIAEoCRItCgthdHRhY2htZW50cxgDIAMoCzIYLmx1bWkuY2hhdC52MS5BdHRhY2htZW50EhIKCnByb2plY3RfaWQYBCABKAkiQwoKQXR0YWNobWVudBIQCghhc3NldF9pZBgBIAEoCRIQCghmaWxlbmFtZRgCIAEoCRIRCgltaW1lX3R5cGUYAyABKAkiwAIKCUNoYXRFdmVudBIpCgV0b2tlbhgBIAEoCzIYLmx1bWkuY2hhdC52MS5Ub2tlbkV2ZW50SAASKQoFYmxvY2sYAiABKAsyGC5sdW1pLmNoYXQudjEuQmxvY2tFdmVudEgAEjoKDmRpc2NhcmRfYnVmZmVyGAMgASgLMiAubHVtaS5jaGF0LnYxLkRpc2NhcmRCdWZmZXJFdmVudEgAEicKBGRvbmUYBCABKAsyFy5sdW1pLmNoYXQudjEuRG9uZUV2ZW50SAASKQoFZXJyb3IYBSABKAsyGC5sdW1pLmNoYXQudjEuRXJyb3JFdmVudEgAEkQKE2NvbnZlcnNhdGlvbl90aXRsZWQYBiABKAsyJS5sdW1pLmNoYXQudjEuQ29udmVyc2F0aW9uVGl0bGVkRXZlbnRIAEIHCgVldmVudCIvCgpUb2tlbkV2ZW50Eg8KB2NvbnRlbnQYASABKAkSEAoIcmVuZGVyZWQYAiABKAkiXwoKQmxvY2tFdmVudBIMCgRraW5kGAEgASgJEgoKAmlkGAIgASgJEhAKCHJlbmRlcmVkGAMgASgJEiUKBGRhdGEYBCABKAsyFy5nb29nbGUucHJvdG9idWYuU3RydWN0IhQKEkRpc2NhcmRCdWZmZXJFdmVudCILCglEb25lRXZlbnQiKwoKRXJyb3JFdmVudBIMCgRjb2RlGAEgASgJEg8KB21lc3NhZ2UYAiABKAkiQQoXQ29udmVyc2F0aW9uVGl0bGVkRXZlbnQSFwoPY29udmVyc2F0aW9uX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJIvkBCgxDb252ZXJzYXRpb24SCgoCaWQYASABKAkSDQoFdGl0bGUYAiABKAkSDgoGc3RhdHVzGAMgASgJEhUKDW1lc3NhZ2VfY291bnQYBCABKAUSEgoKcHJvamVjdF9pZBgFIAEoCRIzCg9sYXN0X21lc3NhZ2VfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCmNyZWF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYCCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIo4BCgdNZXNzYWdlEgoKAmlkGAEgASgJEgwKBHJvbGUYAiABKAkSDwoHY29udGVudBgDIAEoCRIoCgZibG9ja3MYBCADKAsyGC5sdW1pLmNoYXQudjEuQmxvY2tFdmVudBIuCgpjcmVhdGVkX2F0GAUgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcCI9ChhMaXN0Q29udmVyc2F0aW9uc1JlcXVlc3QSDQoFbGltaXQYASABKAUSEgoKcHJvamVjdF9pZBgCIAEoCSJOChlMaXN0Q29udmVyc2F0aW9uc1Jlc3BvbnNlEjEKDWNvbnZlcnNhdGlvbnMYASADKAsyGi5sdW1pLmNoYXQudjEuQ29udmVyc2F0aW9uIi0KEkdldE1lc3NhZ2VzUmVxdWVzdBIXCg9jb252ZXJzYXRpb25faWQYASABKAkiPgoTR2V0TWVzc2FnZXNSZXNwb25zZRInCghtZXNzYWdlcxgBIAMoCzIVLmx1bWkuY2hhdC52MS5NZXNzYWdlIkMKGVJlbmFtZUNvbnZlcnNhdGlvblJlcXVlc3QSFwoPY29udmVyc2F0aW9uX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJIk4KGlJlbmFtZUNvbnZlcnNhdGlvblJlc3BvbnNlEjAKDGNvbnZlcnNhdGlvbhgBIAEoCzIaLmx1bWkuY2hhdC52MS5Db252ZXJzYXRpb24iNQoaQXJjaGl2ZUNvbnZlcnNhdGlvblJlcXVlc3QSFwoPY29udmVyc2F0aW9uX2lkGAEgASgJIh0KG0FyY2hpdmVDb252ZXJzYXRpb25SZXNwb25zZSI0ChlEZWxldGVDb252ZXJzYXRpb25SZXF1ZXN0EhcKD2NvbnZlcnNhdGlvbl9pZBgBIAEoCSI2ChpEZWxldGVDb252ZXJzYXRpb25SZXNwb25zZRIYChBkZWxldGVkX21lc3NhZ2VzGAEgASgFIhIKEFdhdGNoTmV3c1JlcXVlc3QieAoITmV3c0l0ZW0SCgoCaWQYASABKAkSDQoFdG9waWMYAiABKAkSEAoIaGVhZGxpbmUYAyABKAkSDwoHc3VtbWFyeRgEIAEoCRILCgN1cmwYBSABKAkSDgoGc291cmNlGAYgASgJEhEKCXB1Ymxpc2hlZBgHIAEoCSKEAQoKTmV3c0RpZ2VzdBIKCgJpZBgBIAEoCRIZChFnZW5lcmF0ZWRfYXRfdW5peBgCIAEoAxIlCgVpdGVtcxgDIAMoCzIWLmx1bWkuY2hhdC52MS5OZXdzSXRlbRISCgp0b29sX2NhbGxzGAQgASgFEhQKDHRvdGFsX3Rva2VucxgFIAEoAyLEAQoJTmV3c0V2ZW50Ei4KCHNuYXBzaG90GAEgASgLMhoubHVtaS5jaGF0LnYxLk5ld3NTbmFwc2hvdEgAEigKBXN0YXRlGAIgASgOMhcubHVtaS5jaGF0LnYxLlNjYW5TdGF0ZUgAEioKBmRpZ2VzdBgDIAEoCzIYLmx1bWkuY2hhdC52MS5OZXdzRGlnZXN0SAASKAoFZXJyb3IYBCABKAsyFy5sdW1pLmNoYXQudjEuTmV3c0Vycm9ySABCBwoFZXZlbnQigAEKDE5ld3NTbmFwc2hvdBImCgVzdGF0ZRgBIAEoDjIXLmx1bWkuY2hhdC52MS5TY2FuU3RhdGUSKAoGZGlnZXN0GAIgASgLMhgubHVtaS5jaGF0LnYxLk5ld3NEaWdlc3QSHgoWbmV4dF9zY2FuX2FsbG93ZWRfdW5peBgDIAEoAyIqCglOZXdzRXJyb3ISDAoEY29kZRgBIAEoCRIPCgdtZXNzYWdlGAIgASgJKlUKCVNjYW5TdGF0ZRIaChZTQ0FOX1NUQVRFX1VOU1BFQ0lGSUVEEAASEwoPU0NBTl9TVEFURV9JRExFEAESFwoTU0NBTl9TVEFURV9TQ0FOTklORxACMpkFCgtDaGF0U2VydmljZRJKCgtTZW5kTWVzc2FnZRIgLmx1bWkuY2hhdC52MS5TZW5kTWVzc2FnZVJlcXVlc3QaFy5sdW1pLmNoYXQudjEuQ2hhdEV2ZW50MAESZAoRTGlzdENvbnZlcnNhdGlvbnMSJi5sdW1pLmNoYXQudjEuTGlzdENvbnZlcnNhdGlvbnNSZXF1ZXN0GicubHVtaS5jaGF0LnYxLkxpc3RDb252ZXJzYXRpb25zUmVzcG9uc2USUgoLR2V0TWVzc2FnZXMSIC5sdW1pLmNoYXQudjEuR2V0TWVzc2FnZXNSZXF1ZXN0GiEubHVtaS5jaGF0LnYxLkdldE1lc3NhZ2VzUmVzcG9uc2USZwoSUmVuYW1lQ29udmVyc2F0aW9uEicubHVtaS5jaGF0LnYxLlJlbmFtZUNvbnZlcnNhdGlvblJlcXVlc3QaKC5sdW1pLmNoYXQudjEuUmVuYW1lQ29udmVyc2F0aW9uUmVzcG9uc2USagoTQXJjaGl2ZUNvbnZlcnNhdGlvbhIoLmx1bWkuY2hhdC52MS5BcmNoaXZlQ29udmVyc2F0aW9uUmVxdWVzdBopLmx1bWkuY2hhdC52MS5BcmNoaXZlQ29udmVyc2F0aW9uUmVzcG9uc2USZwoSRGVsZXRlQ29udmVyc2F0aW9uEicubHVtaS5jaGF0LnYxLkRlbGV0ZUNvbnZlcnNhdGlvblJlcXVlc3QaKC5sdW1pLmNoYXQudjEuRGVsZXRlQ29udmVyc2F0aW9uUmVzcG9uc2USRgoJV2F0Y2hOZXdzEh4ubHVtaS5jaGF0LnYxLldhdGNoTmV3c1JlcXVlc3QaFy5sdW1pLmNoYXQudjEuTmV3c0V2ZW50MAFCrAEKEGNvbS5sdW1pLmNoYXQudjFCCUNoYXRQcm90b1ABWjtnaXRodWIuY29tL2V4cG9uYS1haS9sdW1pLWdvL3NlcnZlci9nZW4vbHVtaS9jaGF0L3YxO2NoYXR2MaICA0xDWKoCDEx1bWkuQ2hhdC5WMcoCDEx1bWlcQ2hhdFxWMeICGEx1bWlcQ2hhdFxWMVxHUEJNZXRhZGF0YeoCDkx1bWk6OkNoYXQ6OlYxYgZwcm90bzM", [file_google_protobuf_struct, file_google_protobuf_timestamp]);
 
 /**
  * @generated from message lumi.chat.v1.SendMessageRequest
@@ -557,6 +557,253 @@ export const DeleteConversationResponseSchema: GenMessage<DeleteConversationResp
   messageDesc(file_lumi_chat_v1_chat, 20);
 
 /**
+ * @generated from message lumi.chat.v1.WatchNewsRequest
+ */
+export type WatchNewsRequest = Message$1<"lumi.chat.v1.WatchNewsRequest"> & {
+};
+
+/**
+ * Describes the message lumi.chat.v1.WatchNewsRequest.
+ * Use `create(WatchNewsRequestSchema)` to create a new message.
+ */
+export const WatchNewsRequestSchema: GenMessage<WatchNewsRequest> = /*@__PURE__*/
+  messageDesc(file_lumi_chat_v1_chat, 21);
+
+/**
+ * @generated from message lumi.chat.v1.NewsItem
+ */
+export type NewsItem = Message$1<"lumi.chat.v1.NewsItem"> & {
+  /**
+   * Stable across scans: derived from the URL, so an item that reappears in a
+   * later digest keeps its identity and the UI can tell new from repeated.
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * "go", "grpc" or "protobuf".
+   *
+   * @generated from field: string topic = 2;
+   */
+  topic: string;
+
+  /**
+   * @generated from field: string headline = 3;
+   */
+  headline: string;
+
+  /**
+   * @generated from field: string summary = 4;
+   */
+  summary: string;
+
+  /**
+   * @generated from field: string url = 5;
+   */
+  url: string;
+
+  /**
+   * @generated from field: string source = 6;
+   */
+  source: string;
+
+  /**
+   * As reported by the source, not parsed into a timestamp: publication dates
+   * in the wild are inconsistent enough that normalizing them would invent
+   * precision the source never had.
+   *
+   * @generated from field: string published = 7;
+   */
+  published: string;
+};
+
+/**
+ * Describes the message lumi.chat.v1.NewsItem.
+ * Use `create(NewsItemSchema)` to create a new message.
+ */
+export const NewsItemSchema: GenMessage<NewsItem> = /*@__PURE__*/
+  messageDesc(file_lumi_chat_v1_chat, 22);
+
+/**
+ * @generated from message lumi.chat.v1.NewsDigest
+ */
+export type NewsDigest = Message$1<"lumi.chat.v1.NewsDigest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: int64 generated_at_unix = 2;
+   */
+  generatedAtUnix: bigint;
+
+  /**
+   * @generated from field: repeated lumi.chat.v1.NewsItem items = 3;
+   */
+  items: NewsItem[];
+
+  /**
+   * What the scan cost upstream. Surfaced rather than hidden because a
+   * server-side agent loop bills per tool call, and an agent whose cost is
+   * invisible is an agent nobody notices running away.
+   *
+   * @generated from field: int32 tool_calls = 4;
+   */
+  toolCalls: number;
+
+  /**
+   * @generated from field: int64 total_tokens = 5;
+   */
+  totalTokens: bigint;
+};
+
+/**
+ * Describes the message lumi.chat.v1.NewsDigest.
+ * Use `create(NewsDigestSchema)` to create a new message.
+ */
+export const NewsDigestSchema: GenMessage<NewsDigest> = /*@__PURE__*/
+  messageDesc(file_lumi_chat_v1_chat, 23);
+
+/**
+ * @generated from message lumi.chat.v1.NewsEvent
+ */
+export type NewsEvent = Message$1<"lumi.chat.v1.NewsEvent"> & {
+  /**
+   * @generated from oneof lumi.chat.v1.NewsEvent.event
+   */
+  event: {
+    /**
+     * Current state plus the digest in hand. Always the first event on a new
+     * stream.
+     *
+     * @generated from field: lumi.chat.v1.NewsSnapshot snapshot = 1;
+     */
+    value: NewsSnapshot;
+    case: "snapshot";
+  } | {
+    /**
+     * A scan started or finished.
+     *
+     * @generated from field: lumi.chat.v1.ScanState state = 2;
+     */
+    value: ScanState;
+    case: "state";
+  } | {
+    /**
+     * A scan produced something new.
+     *
+     * @generated from field: lumi.chat.v1.NewsDigest digest = 3;
+     */
+    value: NewsDigest;
+    case: "digest";
+  } | {
+    /**
+     * A scan failed. The previous digest stays valid and on screen.
+     *
+     * @generated from field: lumi.chat.v1.NewsError error = 4;
+     */
+    value: NewsError;
+    case: "error";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message lumi.chat.v1.NewsEvent.
+ * Use `create(NewsEventSchema)` to create a new message.
+ */
+export const NewsEventSchema: GenMessage<NewsEvent> = /*@__PURE__*/
+  messageDesc(file_lumi_chat_v1_chat, 24);
+
+/**
+ * @generated from message lumi.chat.v1.NewsSnapshot
+ */
+export type NewsSnapshot = Message$1<"lumi.chat.v1.NewsSnapshot"> & {
+  /**
+   * @generated from field: lumi.chat.v1.ScanState state = 1;
+   */
+  state: ScanState;
+
+  /**
+   * Absent when no scan has ever completed.
+   *
+   * @generated from field: lumi.chat.v1.NewsDigest digest = 2;
+   */
+  digest?: NewsDigest | undefined;
+
+  /**
+   * Unix seconds when the next scan becomes possible. Lets the UI say when
+   * rather than just "not yet".
+   *
+   * @generated from field: int64 next_scan_allowed_unix = 3;
+   */
+  nextScanAllowedUnix: bigint;
+};
+
+/**
+ * Describes the message lumi.chat.v1.NewsSnapshot.
+ * Use `create(NewsSnapshotSchema)` to create a new message.
+ */
+export const NewsSnapshotSchema: GenMessage<NewsSnapshot> = /*@__PURE__*/
+  messageDesc(file_lumi_chat_v1_chat, 25);
+
+/**
+ * @generated from message lumi.chat.v1.NewsError
+ */
+export type NewsError = Message$1<"lumi.chat.v1.NewsError"> & {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code: string;
+
+  /**
+   * @generated from field: string message = 2;
+   */
+  message: string;
+};
+
+/**
+ * Describes the message lumi.chat.v1.NewsError.
+ * Use `create(NewsErrorSchema)` to create a new message.
+ */
+export const NewsErrorSchema: GenMessage<NewsError> = /*@__PURE__*/
+  messageDesc(file_lumi_chat_v1_chat, 26);
+
+/**
+ * What the watcher is doing right now. Sent on connect and on every change, so
+ * the UI can show that work is happening during the minute a scan takes.
+ *
+ * @generated from enum lumi.chat.v1.ScanState
+ */
+export enum ScanState {
+  /**
+   * @generated from enum value: SCAN_STATE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * No scan running; DIGEST holds whatever the last one produced.
+   *
+   * @generated from enum value: SCAN_STATE_IDLE = 1;
+   */
+  IDLE = 1,
+
+  /**
+   * A scan is in flight. Expect a digest, or an error, shortly.
+   *
+   * @generated from enum value: SCAN_STATE_SCANNING = 2;
+   */
+  SCANNING = 2,
+}
+
+/**
+ * Describes the enum lumi.chat.v1.ScanState.
+ */
+export const ScanStateSchema: GenEnum<ScanState> = /*@__PURE__*/
+  enumDesc(file_lumi_chat_v1_chat, 0);
+
+/**
  * ChatService is the whole chat surface of lumi-go.
  *
  * Derived from lumi-neo's WebSocket contract (src/surface/events.ts +
@@ -628,6 +875,24 @@ export const ChatService: GenService<{
     methodKind: "unary";
     input: typeof DeleteConversationRequestSchema;
     output: typeof DeleteConversationResponseSchema;
+  },
+  /**
+   * Push channel for the news watcher. The stream stays open and the server
+   * sends when something changes — a scan starting, a scan finishing, a new
+   * digest. This is a subscription, not a poll: a scan takes about a minute,
+   * which is far too long to hold a request open for, so the result has to
+   * arrive as a notification rather than as a response.
+   *
+   * The first event on any new stream is always the current state, so a client
+   * that connects mid-scan or long after one renders immediately instead of
+   * waiting for the next change.
+   *
+   * @generated from rpc lumi.chat.v1.ChatService.WatchNews
+   */
+  watchNews: {
+    methodKind: "server_streaming";
+    input: typeof WatchNewsRequestSchema;
+    output: typeof NewsEventSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_lumi_chat_v1_chat, 0);

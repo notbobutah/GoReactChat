@@ -23,6 +23,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// What the watcher is doing right now. Sent on connect and on every change, so
+// the UI can show that work is happening during the minute a scan takes.
+type ScanState int32
+
+const (
+	ScanState_SCAN_STATE_UNSPECIFIED ScanState = 0
+	// No scan running; DIGEST holds whatever the last one produced.
+	ScanState_SCAN_STATE_IDLE ScanState = 1
+	// A scan is in flight. Expect a digest, or an error, shortly.
+	ScanState_SCAN_STATE_SCANNING ScanState = 2
+)
+
+// Enum value maps for ScanState.
+var (
+	ScanState_name = map[int32]string{
+		0: "SCAN_STATE_UNSPECIFIED",
+		1: "SCAN_STATE_IDLE",
+		2: "SCAN_STATE_SCANNING",
+	}
+	ScanState_value = map[string]int32{
+		"SCAN_STATE_UNSPECIFIED": 0,
+		"SCAN_STATE_IDLE":        1,
+		"SCAN_STATE_SCANNING":    2,
+	}
+)
+
+func (x ScanState) Enum() *ScanState {
+	p := new(ScanState)
+	*p = x
+	return p
+}
+
+func (x ScanState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ScanState) Descriptor() protoreflect.EnumDescriptor {
+	return file_lumi_chat_v1_chat_proto_enumTypes[0].Descriptor()
+}
+
+func (ScanState) Type() protoreflect.EnumType {
+	return &file_lumi_chat_v1_chat_proto_enumTypes[0]
+}
+
+func (x ScanState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ScanState.Descriptor instead.
+func (ScanState) EnumDescriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{0}
+}
+
 type SendMessageRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Client-generated conversation id (uuid). Created on first send under the
@@ -1243,6 +1296,453 @@ func (x *DeleteConversationResponse) GetDeletedMessages() int32 {
 	return 0
 }
 
+type WatchNewsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WatchNewsRequest) Reset() {
+	*x = WatchNewsRequest{}
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WatchNewsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WatchNewsRequest) ProtoMessage() {}
+
+func (x *WatchNewsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WatchNewsRequest.ProtoReflect.Descriptor instead.
+func (*WatchNewsRequest) Descriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{21}
+}
+
+type NewsItem struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Stable across scans: derived from the URL, so an item that reappears in a
+	// later digest keeps its identity and the UI can tell new from repeated.
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// "go", "grpc" or "protobuf".
+	Topic    string `protobuf:"bytes,2,opt,name=topic,proto3" json:"topic,omitempty"`
+	Headline string `protobuf:"bytes,3,opt,name=headline,proto3" json:"headline,omitempty"`
+	Summary  string `protobuf:"bytes,4,opt,name=summary,proto3" json:"summary,omitempty"`
+	Url      string `protobuf:"bytes,5,opt,name=url,proto3" json:"url,omitempty"`
+	Source   string `protobuf:"bytes,6,opt,name=source,proto3" json:"source,omitempty"`
+	// As reported by the source, not parsed into a timestamp: publication dates
+	// in the wild are inconsistent enough that normalizing them would invent
+	// precision the source never had.
+	Published     string `protobuf:"bytes,7,opt,name=published,proto3" json:"published,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsItem) Reset() {
+	*x = NewsItem{}
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsItem) ProtoMessage() {}
+
+func (x *NewsItem) ProtoReflect() protoreflect.Message {
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsItem.ProtoReflect.Descriptor instead.
+func (*NewsItem) Descriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *NewsItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *NewsItem) GetTopic() string {
+	if x != nil {
+		return x.Topic
+	}
+	return ""
+}
+
+func (x *NewsItem) GetHeadline() string {
+	if x != nil {
+		return x.Headline
+	}
+	return ""
+}
+
+func (x *NewsItem) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
+func (x *NewsItem) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *NewsItem) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *NewsItem) GetPublished() string {
+	if x != nil {
+		return x.Published
+	}
+	return ""
+}
+
+type NewsDigest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Id              string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	GeneratedAtUnix int64                  `protobuf:"varint,2,opt,name=generated_at_unix,json=generatedAtUnix,proto3" json:"generated_at_unix,omitempty"`
+	Items           []*NewsItem            `protobuf:"bytes,3,rep,name=items,proto3" json:"items,omitempty"`
+	// What the scan cost upstream. Surfaced rather than hidden because a
+	// server-side agent loop bills per tool call, and an agent whose cost is
+	// invisible is an agent nobody notices running away.
+	ToolCalls     int32 `protobuf:"varint,4,opt,name=tool_calls,json=toolCalls,proto3" json:"tool_calls,omitempty"`
+	TotalTokens   int64 `protobuf:"varint,5,opt,name=total_tokens,json=totalTokens,proto3" json:"total_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsDigest) Reset() {
+	*x = NewsDigest{}
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsDigest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsDigest) ProtoMessage() {}
+
+func (x *NewsDigest) ProtoReflect() protoreflect.Message {
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsDigest.ProtoReflect.Descriptor instead.
+func (*NewsDigest) Descriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *NewsDigest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *NewsDigest) GetGeneratedAtUnix() int64 {
+	if x != nil {
+		return x.GeneratedAtUnix
+	}
+	return 0
+}
+
+func (x *NewsDigest) GetItems() []*NewsItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *NewsDigest) GetToolCalls() int32 {
+	if x != nil {
+		return x.ToolCalls
+	}
+	return 0
+}
+
+func (x *NewsDigest) GetTotalTokens() int64 {
+	if x != nil {
+		return x.TotalTokens
+	}
+	return 0
+}
+
+type NewsEvent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*NewsEvent_Snapshot
+	//	*NewsEvent_State
+	//	*NewsEvent_Digest
+	//	*NewsEvent_Error
+	Event         isNewsEvent_Event `protobuf_oneof:"event"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsEvent) Reset() {
+	*x = NewsEvent{}
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsEvent) ProtoMessage() {}
+
+func (x *NewsEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsEvent.ProtoReflect.Descriptor instead.
+func (*NewsEvent) Descriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *NewsEvent) GetEvent() isNewsEvent_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *NewsEvent) GetSnapshot() *NewsSnapshot {
+	if x != nil {
+		if x, ok := x.Event.(*NewsEvent_Snapshot); ok {
+			return x.Snapshot
+		}
+	}
+	return nil
+}
+
+func (x *NewsEvent) GetState() ScanState {
+	if x != nil {
+		if x, ok := x.Event.(*NewsEvent_State); ok {
+			return x.State
+		}
+	}
+	return ScanState_SCAN_STATE_UNSPECIFIED
+}
+
+func (x *NewsEvent) GetDigest() *NewsDigest {
+	if x != nil {
+		if x, ok := x.Event.(*NewsEvent_Digest); ok {
+			return x.Digest
+		}
+	}
+	return nil
+}
+
+func (x *NewsEvent) GetError() *NewsError {
+	if x != nil {
+		if x, ok := x.Event.(*NewsEvent_Error); ok {
+			return x.Error
+		}
+	}
+	return nil
+}
+
+type isNewsEvent_Event interface {
+	isNewsEvent_Event()
+}
+
+type NewsEvent_Snapshot struct {
+	// Current state plus the digest in hand. Always the first event on a new
+	// stream.
+	Snapshot *NewsSnapshot `protobuf:"bytes,1,opt,name=snapshot,proto3,oneof"`
+}
+
+type NewsEvent_State struct {
+	// A scan started or finished.
+	State ScanState `protobuf:"varint,2,opt,name=state,proto3,enum=lumi.chat.v1.ScanState,oneof"`
+}
+
+type NewsEvent_Digest struct {
+	// A scan produced something new.
+	Digest *NewsDigest `protobuf:"bytes,3,opt,name=digest,proto3,oneof"`
+}
+
+type NewsEvent_Error struct {
+	// A scan failed. The previous digest stays valid and on screen.
+	Error *NewsError `protobuf:"bytes,4,opt,name=error,proto3,oneof"`
+}
+
+func (*NewsEvent_Snapshot) isNewsEvent_Event() {}
+
+func (*NewsEvent_State) isNewsEvent_Event() {}
+
+func (*NewsEvent_Digest) isNewsEvent_Event() {}
+
+func (*NewsEvent_Error) isNewsEvent_Event() {}
+
+type NewsSnapshot struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	State ScanState              `protobuf:"varint,1,opt,name=state,proto3,enum=lumi.chat.v1.ScanState" json:"state,omitempty"`
+	// Absent when no scan has ever completed.
+	Digest *NewsDigest `protobuf:"bytes,2,opt,name=digest,proto3" json:"digest,omitempty"`
+	// Unix seconds when the next scan becomes possible. Lets the UI say when
+	// rather than just "not yet".
+	NextScanAllowedUnix int64 `protobuf:"varint,3,opt,name=next_scan_allowed_unix,json=nextScanAllowedUnix,proto3" json:"next_scan_allowed_unix,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *NewsSnapshot) Reset() {
+	*x = NewsSnapshot{}
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsSnapshot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsSnapshot) ProtoMessage() {}
+
+func (x *NewsSnapshot) ProtoReflect() protoreflect.Message {
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsSnapshot.ProtoReflect.Descriptor instead.
+func (*NewsSnapshot) Descriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *NewsSnapshot) GetState() ScanState {
+	if x != nil {
+		return x.State
+	}
+	return ScanState_SCAN_STATE_UNSPECIFIED
+}
+
+func (x *NewsSnapshot) GetDigest() *NewsDigest {
+	if x != nil {
+		return x.Digest
+	}
+	return nil
+}
+
+func (x *NewsSnapshot) GetNextScanAllowedUnix() int64 {
+	if x != nil {
+		return x.NextScanAllowedUnix
+	}
+	return 0
+}
+
+type NewsError struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewsError) Reset() {
+	*x = NewsError{}
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewsError) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewsError) ProtoMessage() {}
+
+func (x *NewsError) ProtoReflect() protoreflect.Message {
+	mi := &file_lumi_chat_v1_chat_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewsError.ProtoReflect.Descriptor instead.
+func (*NewsError) Descriptor() ([]byte, []int) {
+	return file_lumi_chat_v1_chat_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *NewsError) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *NewsError) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_lumi_chat_v1_chat_proto protoreflect.FileDescriptor
 
 const file_lumi_chat_v1_chat_proto_rawDesc = "" +
@@ -1326,14 +1826,49 @@ const file_lumi_chat_v1_chat_proto_rawDesc = "" +
 	"\x19DeleteConversationRequest\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\"G\n" +
 	"\x1aDeleteConversationResponse\x12)\n" +
-	"\x10deleted_messages\x18\x01 \x01(\x05R\x0fdeletedMessages2\xd1\x04\n" +
+	"\x10deleted_messages\x18\x01 \x01(\x05R\x0fdeletedMessages\"\x12\n" +
+	"\x10WatchNewsRequest\"\xae\x01\n" +
+	"\bNewsItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05topic\x18\x02 \x01(\tR\x05topic\x12\x1a\n" +
+	"\bheadline\x18\x03 \x01(\tR\bheadline\x12\x18\n" +
+	"\asummary\x18\x04 \x01(\tR\asummary\x12\x10\n" +
+	"\x03url\x18\x05 \x01(\tR\x03url\x12\x16\n" +
+	"\x06source\x18\x06 \x01(\tR\x06source\x12\x1c\n" +
+	"\tpublished\x18\a \x01(\tR\tpublished\"\xb8\x01\n" +
+	"\n" +
+	"NewsDigest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
+	"\x11generated_at_unix\x18\x02 \x01(\x03R\x0fgeneratedAtUnix\x12,\n" +
+	"\x05items\x18\x03 \x03(\v2\x16.lumi.chat.v1.NewsItemR\x05items\x12\x1d\n" +
+	"\n" +
+	"tool_calls\x18\x04 \x01(\x05R\ttoolCalls\x12!\n" +
+	"\ftotal_tokens\x18\x05 \x01(\x03R\vtotalTokens\"\xe4\x01\n" +
+	"\tNewsEvent\x128\n" +
+	"\bsnapshot\x18\x01 \x01(\v2\x1a.lumi.chat.v1.NewsSnapshotH\x00R\bsnapshot\x12/\n" +
+	"\x05state\x18\x02 \x01(\x0e2\x17.lumi.chat.v1.ScanStateH\x00R\x05state\x122\n" +
+	"\x06digest\x18\x03 \x01(\v2\x18.lumi.chat.v1.NewsDigestH\x00R\x06digest\x12/\n" +
+	"\x05error\x18\x04 \x01(\v2\x17.lumi.chat.v1.NewsErrorH\x00R\x05errorB\a\n" +
+	"\x05event\"\xa4\x01\n" +
+	"\fNewsSnapshot\x12-\n" +
+	"\x05state\x18\x01 \x01(\x0e2\x17.lumi.chat.v1.ScanStateR\x05state\x120\n" +
+	"\x06digest\x18\x02 \x01(\v2\x18.lumi.chat.v1.NewsDigestR\x06digest\x123\n" +
+	"\x16next_scan_allowed_unix\x18\x03 \x01(\x03R\x13nextScanAllowedUnix\"9\n" +
+	"\tNewsError\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage*U\n" +
+	"\tScanState\x12\x1a\n" +
+	"\x16SCAN_STATE_UNSPECIFIED\x10\x00\x12\x13\n" +
+	"\x0fSCAN_STATE_IDLE\x10\x01\x12\x17\n" +
+	"\x13SCAN_STATE_SCANNING\x10\x022\x99\x05\n" +
 	"\vChatService\x12J\n" +
 	"\vSendMessage\x12 .lumi.chat.v1.SendMessageRequest\x1a\x17.lumi.chat.v1.ChatEvent0\x01\x12d\n" +
 	"\x11ListConversations\x12&.lumi.chat.v1.ListConversationsRequest\x1a'.lumi.chat.v1.ListConversationsResponse\x12R\n" +
 	"\vGetMessages\x12 .lumi.chat.v1.GetMessagesRequest\x1a!.lumi.chat.v1.GetMessagesResponse\x12g\n" +
 	"\x12RenameConversation\x12'.lumi.chat.v1.RenameConversationRequest\x1a(.lumi.chat.v1.RenameConversationResponse\x12j\n" +
 	"\x13ArchiveConversation\x12(.lumi.chat.v1.ArchiveConversationRequest\x1a).lumi.chat.v1.ArchiveConversationResponse\x12g\n" +
-	"\x12DeleteConversation\x12'.lumi.chat.v1.DeleteConversationRequest\x1a(.lumi.chat.v1.DeleteConversationResponseB\xac\x01\n" +
+	"\x12DeleteConversation\x12'.lumi.chat.v1.DeleteConversationRequest\x1a(.lumi.chat.v1.DeleteConversationResponse\x12F\n" +
+	"\tWatchNews\x12\x1e.lumi.chat.v1.WatchNewsRequest\x1a\x17.lumi.chat.v1.NewsEvent0\x01B\xac\x01\n" +
 	"\x10com.lumi.chat.v1B\tChatProtoP\x01Z;github.com/expona-ai/lumi-go/server/gen/lumi/chat/v1;chatv1\xa2\x02\x03LCX\xaa\x02\fLumi.Chat.V1\xca\x02\fLumi\\Chat\\V1\xe2\x02\x18Lumi\\Chat\\V1\\GPBMetadata\xea\x02\x0eLumi::Chat::V1b\x06proto3"
 
 var (
@@ -1348,66 +1883,83 @@ func file_lumi_chat_v1_chat_proto_rawDescGZIP() []byte {
 	return file_lumi_chat_v1_chat_proto_rawDescData
 }
 
-var file_lumi_chat_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 21)
+var file_lumi_chat_v1_chat_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_lumi_chat_v1_chat_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_lumi_chat_v1_chat_proto_goTypes = []any{
-	(*SendMessageRequest)(nil),          // 0: lumi.chat.v1.SendMessageRequest
-	(*Attachment)(nil),                  // 1: lumi.chat.v1.Attachment
-	(*ChatEvent)(nil),                   // 2: lumi.chat.v1.ChatEvent
-	(*TokenEvent)(nil),                  // 3: lumi.chat.v1.TokenEvent
-	(*BlockEvent)(nil),                  // 4: lumi.chat.v1.BlockEvent
-	(*DiscardBufferEvent)(nil),          // 5: lumi.chat.v1.DiscardBufferEvent
-	(*DoneEvent)(nil),                   // 6: lumi.chat.v1.DoneEvent
-	(*ErrorEvent)(nil),                  // 7: lumi.chat.v1.ErrorEvent
-	(*ConversationTitledEvent)(nil),     // 8: lumi.chat.v1.ConversationTitledEvent
-	(*Conversation)(nil),                // 9: lumi.chat.v1.Conversation
-	(*Message)(nil),                     // 10: lumi.chat.v1.Message
-	(*ListConversationsRequest)(nil),    // 11: lumi.chat.v1.ListConversationsRequest
-	(*ListConversationsResponse)(nil),   // 12: lumi.chat.v1.ListConversationsResponse
-	(*GetMessagesRequest)(nil),          // 13: lumi.chat.v1.GetMessagesRequest
-	(*GetMessagesResponse)(nil),         // 14: lumi.chat.v1.GetMessagesResponse
-	(*RenameConversationRequest)(nil),   // 15: lumi.chat.v1.RenameConversationRequest
-	(*RenameConversationResponse)(nil),  // 16: lumi.chat.v1.RenameConversationResponse
-	(*ArchiveConversationRequest)(nil),  // 17: lumi.chat.v1.ArchiveConversationRequest
-	(*ArchiveConversationResponse)(nil), // 18: lumi.chat.v1.ArchiveConversationResponse
-	(*DeleteConversationRequest)(nil),   // 19: lumi.chat.v1.DeleteConversationRequest
-	(*DeleteConversationResponse)(nil),  // 20: lumi.chat.v1.DeleteConversationResponse
-	(*structpb.Struct)(nil),             // 21: google.protobuf.Struct
-	(*timestamppb.Timestamp)(nil),       // 22: google.protobuf.Timestamp
+	(ScanState)(0),                      // 0: lumi.chat.v1.ScanState
+	(*SendMessageRequest)(nil),          // 1: lumi.chat.v1.SendMessageRequest
+	(*Attachment)(nil),                  // 2: lumi.chat.v1.Attachment
+	(*ChatEvent)(nil),                   // 3: lumi.chat.v1.ChatEvent
+	(*TokenEvent)(nil),                  // 4: lumi.chat.v1.TokenEvent
+	(*BlockEvent)(nil),                  // 5: lumi.chat.v1.BlockEvent
+	(*DiscardBufferEvent)(nil),          // 6: lumi.chat.v1.DiscardBufferEvent
+	(*DoneEvent)(nil),                   // 7: lumi.chat.v1.DoneEvent
+	(*ErrorEvent)(nil),                  // 8: lumi.chat.v1.ErrorEvent
+	(*ConversationTitledEvent)(nil),     // 9: lumi.chat.v1.ConversationTitledEvent
+	(*Conversation)(nil),                // 10: lumi.chat.v1.Conversation
+	(*Message)(nil),                     // 11: lumi.chat.v1.Message
+	(*ListConversationsRequest)(nil),    // 12: lumi.chat.v1.ListConversationsRequest
+	(*ListConversationsResponse)(nil),   // 13: lumi.chat.v1.ListConversationsResponse
+	(*GetMessagesRequest)(nil),          // 14: lumi.chat.v1.GetMessagesRequest
+	(*GetMessagesResponse)(nil),         // 15: lumi.chat.v1.GetMessagesResponse
+	(*RenameConversationRequest)(nil),   // 16: lumi.chat.v1.RenameConversationRequest
+	(*RenameConversationResponse)(nil),  // 17: lumi.chat.v1.RenameConversationResponse
+	(*ArchiveConversationRequest)(nil),  // 18: lumi.chat.v1.ArchiveConversationRequest
+	(*ArchiveConversationResponse)(nil), // 19: lumi.chat.v1.ArchiveConversationResponse
+	(*DeleteConversationRequest)(nil),   // 20: lumi.chat.v1.DeleteConversationRequest
+	(*DeleteConversationResponse)(nil),  // 21: lumi.chat.v1.DeleteConversationResponse
+	(*WatchNewsRequest)(nil),            // 22: lumi.chat.v1.WatchNewsRequest
+	(*NewsItem)(nil),                    // 23: lumi.chat.v1.NewsItem
+	(*NewsDigest)(nil),                  // 24: lumi.chat.v1.NewsDigest
+	(*NewsEvent)(nil),                   // 25: lumi.chat.v1.NewsEvent
+	(*NewsSnapshot)(nil),                // 26: lumi.chat.v1.NewsSnapshot
+	(*NewsError)(nil),                   // 27: lumi.chat.v1.NewsError
+	(*structpb.Struct)(nil),             // 28: google.protobuf.Struct
+	(*timestamppb.Timestamp)(nil),       // 29: google.protobuf.Timestamp
 }
 var file_lumi_chat_v1_chat_proto_depIdxs = []int32{
-	1,  // 0: lumi.chat.v1.SendMessageRequest.attachments:type_name -> lumi.chat.v1.Attachment
-	3,  // 1: lumi.chat.v1.ChatEvent.token:type_name -> lumi.chat.v1.TokenEvent
-	4,  // 2: lumi.chat.v1.ChatEvent.block:type_name -> lumi.chat.v1.BlockEvent
-	5,  // 3: lumi.chat.v1.ChatEvent.discard_buffer:type_name -> lumi.chat.v1.DiscardBufferEvent
-	6,  // 4: lumi.chat.v1.ChatEvent.done:type_name -> lumi.chat.v1.DoneEvent
-	7,  // 5: lumi.chat.v1.ChatEvent.error:type_name -> lumi.chat.v1.ErrorEvent
-	8,  // 6: lumi.chat.v1.ChatEvent.conversation_titled:type_name -> lumi.chat.v1.ConversationTitledEvent
-	21, // 7: lumi.chat.v1.BlockEvent.data:type_name -> google.protobuf.Struct
-	22, // 8: lumi.chat.v1.Conversation.last_message_at:type_name -> google.protobuf.Timestamp
-	22, // 9: lumi.chat.v1.Conversation.created_at:type_name -> google.protobuf.Timestamp
-	22, // 10: lumi.chat.v1.Conversation.updated_at:type_name -> google.protobuf.Timestamp
-	4,  // 11: lumi.chat.v1.Message.blocks:type_name -> lumi.chat.v1.BlockEvent
-	22, // 12: lumi.chat.v1.Message.created_at:type_name -> google.protobuf.Timestamp
-	9,  // 13: lumi.chat.v1.ListConversationsResponse.conversations:type_name -> lumi.chat.v1.Conversation
-	10, // 14: lumi.chat.v1.GetMessagesResponse.messages:type_name -> lumi.chat.v1.Message
-	9,  // 15: lumi.chat.v1.RenameConversationResponse.conversation:type_name -> lumi.chat.v1.Conversation
-	0,  // 16: lumi.chat.v1.ChatService.SendMessage:input_type -> lumi.chat.v1.SendMessageRequest
-	11, // 17: lumi.chat.v1.ChatService.ListConversations:input_type -> lumi.chat.v1.ListConversationsRequest
-	13, // 18: lumi.chat.v1.ChatService.GetMessages:input_type -> lumi.chat.v1.GetMessagesRequest
-	15, // 19: lumi.chat.v1.ChatService.RenameConversation:input_type -> lumi.chat.v1.RenameConversationRequest
-	17, // 20: lumi.chat.v1.ChatService.ArchiveConversation:input_type -> lumi.chat.v1.ArchiveConversationRequest
-	19, // 21: lumi.chat.v1.ChatService.DeleteConversation:input_type -> lumi.chat.v1.DeleteConversationRequest
-	2,  // 22: lumi.chat.v1.ChatService.SendMessage:output_type -> lumi.chat.v1.ChatEvent
-	12, // 23: lumi.chat.v1.ChatService.ListConversations:output_type -> lumi.chat.v1.ListConversationsResponse
-	14, // 24: lumi.chat.v1.ChatService.GetMessages:output_type -> lumi.chat.v1.GetMessagesResponse
-	16, // 25: lumi.chat.v1.ChatService.RenameConversation:output_type -> lumi.chat.v1.RenameConversationResponse
-	18, // 26: lumi.chat.v1.ChatService.ArchiveConversation:output_type -> lumi.chat.v1.ArchiveConversationResponse
-	20, // 27: lumi.chat.v1.ChatService.DeleteConversation:output_type -> lumi.chat.v1.DeleteConversationResponse
-	22, // [22:28] is the sub-list for method output_type
-	16, // [16:22] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	2,  // 0: lumi.chat.v1.SendMessageRequest.attachments:type_name -> lumi.chat.v1.Attachment
+	4,  // 1: lumi.chat.v1.ChatEvent.token:type_name -> lumi.chat.v1.TokenEvent
+	5,  // 2: lumi.chat.v1.ChatEvent.block:type_name -> lumi.chat.v1.BlockEvent
+	6,  // 3: lumi.chat.v1.ChatEvent.discard_buffer:type_name -> lumi.chat.v1.DiscardBufferEvent
+	7,  // 4: lumi.chat.v1.ChatEvent.done:type_name -> lumi.chat.v1.DoneEvent
+	8,  // 5: lumi.chat.v1.ChatEvent.error:type_name -> lumi.chat.v1.ErrorEvent
+	9,  // 6: lumi.chat.v1.ChatEvent.conversation_titled:type_name -> lumi.chat.v1.ConversationTitledEvent
+	28, // 7: lumi.chat.v1.BlockEvent.data:type_name -> google.protobuf.Struct
+	29, // 8: lumi.chat.v1.Conversation.last_message_at:type_name -> google.protobuf.Timestamp
+	29, // 9: lumi.chat.v1.Conversation.created_at:type_name -> google.protobuf.Timestamp
+	29, // 10: lumi.chat.v1.Conversation.updated_at:type_name -> google.protobuf.Timestamp
+	5,  // 11: lumi.chat.v1.Message.blocks:type_name -> lumi.chat.v1.BlockEvent
+	29, // 12: lumi.chat.v1.Message.created_at:type_name -> google.protobuf.Timestamp
+	10, // 13: lumi.chat.v1.ListConversationsResponse.conversations:type_name -> lumi.chat.v1.Conversation
+	11, // 14: lumi.chat.v1.GetMessagesResponse.messages:type_name -> lumi.chat.v1.Message
+	10, // 15: lumi.chat.v1.RenameConversationResponse.conversation:type_name -> lumi.chat.v1.Conversation
+	23, // 16: lumi.chat.v1.NewsDigest.items:type_name -> lumi.chat.v1.NewsItem
+	26, // 17: lumi.chat.v1.NewsEvent.snapshot:type_name -> lumi.chat.v1.NewsSnapshot
+	0,  // 18: lumi.chat.v1.NewsEvent.state:type_name -> lumi.chat.v1.ScanState
+	24, // 19: lumi.chat.v1.NewsEvent.digest:type_name -> lumi.chat.v1.NewsDigest
+	27, // 20: lumi.chat.v1.NewsEvent.error:type_name -> lumi.chat.v1.NewsError
+	0,  // 21: lumi.chat.v1.NewsSnapshot.state:type_name -> lumi.chat.v1.ScanState
+	24, // 22: lumi.chat.v1.NewsSnapshot.digest:type_name -> lumi.chat.v1.NewsDigest
+	1,  // 23: lumi.chat.v1.ChatService.SendMessage:input_type -> lumi.chat.v1.SendMessageRequest
+	12, // 24: lumi.chat.v1.ChatService.ListConversations:input_type -> lumi.chat.v1.ListConversationsRequest
+	14, // 25: lumi.chat.v1.ChatService.GetMessages:input_type -> lumi.chat.v1.GetMessagesRequest
+	16, // 26: lumi.chat.v1.ChatService.RenameConversation:input_type -> lumi.chat.v1.RenameConversationRequest
+	18, // 27: lumi.chat.v1.ChatService.ArchiveConversation:input_type -> lumi.chat.v1.ArchiveConversationRequest
+	20, // 28: lumi.chat.v1.ChatService.DeleteConversation:input_type -> lumi.chat.v1.DeleteConversationRequest
+	22, // 29: lumi.chat.v1.ChatService.WatchNews:input_type -> lumi.chat.v1.WatchNewsRequest
+	3,  // 30: lumi.chat.v1.ChatService.SendMessage:output_type -> lumi.chat.v1.ChatEvent
+	13, // 31: lumi.chat.v1.ChatService.ListConversations:output_type -> lumi.chat.v1.ListConversationsResponse
+	15, // 32: lumi.chat.v1.ChatService.GetMessages:output_type -> lumi.chat.v1.GetMessagesResponse
+	17, // 33: lumi.chat.v1.ChatService.RenameConversation:output_type -> lumi.chat.v1.RenameConversationResponse
+	19, // 34: lumi.chat.v1.ChatService.ArchiveConversation:output_type -> lumi.chat.v1.ArchiveConversationResponse
+	21, // 35: lumi.chat.v1.ChatService.DeleteConversation:output_type -> lumi.chat.v1.DeleteConversationResponse
+	25, // 36: lumi.chat.v1.ChatService.WatchNews:output_type -> lumi.chat.v1.NewsEvent
+	30, // [30:37] is the sub-list for method output_type
+	23, // [23:30] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_lumi_chat_v1_chat_proto_init() }
@@ -1423,18 +1975,25 @@ func file_lumi_chat_v1_chat_proto_init() {
 		(*ChatEvent_Error)(nil),
 		(*ChatEvent_ConversationTitled)(nil),
 	}
+	file_lumi_chat_v1_chat_proto_msgTypes[24].OneofWrappers = []any{
+		(*NewsEvent_Snapshot)(nil),
+		(*NewsEvent_State)(nil),
+		(*NewsEvent_Digest)(nil),
+		(*NewsEvent_Error)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_lumi_chat_v1_chat_proto_rawDesc), len(file_lumi_chat_v1_chat_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   21,
+			NumEnums:      1,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_lumi_chat_v1_chat_proto_goTypes,
 		DependencyIndexes: file_lumi_chat_v1_chat_proto_depIdxs,
+		EnumInfos:         file_lumi_chat_v1_chat_proto_enumTypes,
 		MessageInfos:      file_lumi_chat_v1_chat_proto_msgTypes,
 	}.Build()
 	File_lumi_chat_v1_chat_proto = out.File

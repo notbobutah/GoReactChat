@@ -31,6 +31,17 @@ service ChatService {
   rpc RenameConversation(RenameConversationRequest) returns (RenameConversationResponse);
   rpc ArchiveConversation(ArchiveConversationRequest) returns (ArchiveConversationResponse);
   rpc DeleteConversation(DeleteConversationRequest) returns (DeleteConversationResponse);
+
+  // Push channel for the news watcher. The stream stays open and the server
+  // sends when something changes — a scan starting, a scan finishing, a new
+  // digest. This is a subscription, not a poll: a scan takes about a minute,
+  // which is far too long to hold a request open for, so the result has to
+  // arrive as a notification rather than as a response.
+  //
+  // The first event on any new stream is always the current state, so a client
+  // that connects mid-scan or long after one renders immediately instead of
+  // waiting for the next change.
+  rpc WatchNews(WatchNewsRequest) returns (stream NewsEvent);
 }
 
 // --- send -------------------------------------------------------------------
@@ -174,4 +185,77 @@ message DeleteConversationRequest {
 
 message DeleteConversationResponse {
   int32 deleted_messages = 1;
+}
+
+// --- news watcher -----------------------------------------------------------
+// A background agent scans the web for Go, gRPC and Protobuf news. The agent
+// loop itself runs on xAI's servers: one request declares the tools, and the
+// model searches, reads and iterates there before answering. Nothing here polls
+// or orchestrates it — which is the point, and why this needs no new service.
+
+message WatchNewsRequest {}
+
+// What the watcher is doing right now. Sent on connect and on every change, so
+// the UI can show that work is happening during the minute a scan takes.
+enum ScanState {
+  SCAN_STATE_UNSPECIFIED = 0;
+  // No scan running; DIGEST holds whatever the last one produced.
+  SCAN_STATE_IDLE = 1;
+  // A scan is in flight. Expect a digest, or an error, shortly.
+  SCAN_STATE_SCANNING = 2;
+}
+
+message NewsItem {
+  // Stable across scans: derived from the URL, so an item that reappears in a
+  // later digest keeps its identity and the UI can tell new from repeated.
+  string id = 1;
+  // "go", "grpc" or "protobuf".
+  string topic = 2;
+  string headline = 3;
+  string summary = 4;
+  string url = 5;
+  string source = 6;
+  // As reported by the source, not parsed into a timestamp: publication dates
+  // in the wild are inconsistent enough that normalizing them would invent
+  // precision the source never had.
+  string published = 7;
+}
+
+message NewsDigest {
+  string id = 1;
+  int64 generated_at_unix = 2;
+  repeated NewsItem items = 3;
+  // What the scan cost upstream. Surfaced rather than hidden because a
+  // server-side agent loop bills per tool call, and an agent whose cost is
+  // invisible is an agent nobody notices running away.
+  int32 tool_calls = 4;
+  int64 total_tokens = 5;
+}
+
+message NewsEvent {
+  oneof event {
+    // Current state plus the digest in hand. Always the first event on a new
+    // stream.
+    NewsSnapshot snapshot = 1;
+    // A scan started or finished.
+    ScanState state = 2;
+    // A scan produced something new.
+    NewsDigest digest = 3;
+    // A scan failed. The previous digest stays valid and on screen.
+    NewsError error = 4;
+  }
+}
+
+message NewsSnapshot {
+  ScanState state = 1;
+  // Absent when no scan has ever completed.
+  NewsDigest digest = 2;
+  // Unix seconds when the next scan becomes possible. Lets the UI say when
+  // rather than just "not yet".
+  int64 next_scan_allowed_unix = 3;
+}
+
+message NewsError {
+  string code = 1;
+  string message = 2;
 }

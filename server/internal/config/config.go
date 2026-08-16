@@ -73,6 +73,22 @@ type Config struct {
 	// history, so an endless conversation costs more per turn than the last.
 	MaxMessagesPerConversation int
 	AllowedOrigins             []string
+
+	// --- news watcher ---
+	// A research agent whose tool loop runs on xAI's servers. Empty key
+	// disables the whole feature: no watcher, and WatchNews reports
+	// Unimplemented rather than failing per request.
+	GrokAPIKey  string
+	GrokBaseURL string
+	NewsModel   string
+	// NewsInterval is the minimum time between scans. This is the cost control
+	// that matters: a scan runs a dozen or more billed searches, so the
+	// interval, not the token budget, is what bounds spend here.
+	NewsInterval time.Duration
+	NewsTimeout  time.Duration
+	// NewsMaxTurns caps rounds of server-side tool use within one scan.
+	NewsMaxTurns int
+	NewsMaxItems int
 }
 
 // Load reads the environment. It does not read .env files — use `make dev`,
@@ -123,6 +139,16 @@ func Load() (*Config, error) {
 		MaxMessagesPerConversation: envInt("MAX_MESSAGES_PER_CONVERSATION", 40),
 		RateLimitWin:               time.Duration(envInt("RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,
 		AllowedOrigins:             splitList(env("ALLOWED_ORIGINS", "http://localhost:3000")),
+
+		GrokAPIKey:  os.Getenv("GROK_API_KEY"),
+		GrokBaseURL: env("GROK_BASE_URL", "https://api.x.ai"),
+		NewsModel:   env("NEWS_MODEL", "grok-4.6"),
+		// Four hours. Long enough that a busy day of visitors cannot run up a
+		// bill, short enough that the page is not showing week-old releases.
+		NewsInterval: time.Duration(envInt("NEWS_INTERVAL_MINUTES", 240)) * time.Minute,
+		NewsTimeout:  time.Duration(envInt("NEWS_TIMEOUT_SECONDS", 240)) * time.Second,
+		NewsMaxTurns: envInt("NEWS_MAX_TURNS", 12),
+		NewsMaxItems: envInt("NEWS_MAX_ITEMS", 6),
 	}
 
 	switch c.AuthMode {

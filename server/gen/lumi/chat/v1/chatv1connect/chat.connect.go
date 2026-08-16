@@ -49,6 +49,8 @@ const (
 	// ChatServiceDeleteConversationProcedure is the fully-qualified name of the ChatService's
 	// DeleteConversation RPC.
 	ChatServiceDeleteConversationProcedure = "/lumi.chat.v1.ChatService/DeleteConversation"
+	// ChatServiceWatchNewsProcedure is the fully-qualified name of the ChatService's WatchNews RPC.
+	ChatServiceWatchNewsProcedure = "/lumi.chat.v1.ChatService/WatchNews"
 )
 
 // ChatServiceClient is a client for the lumi.chat.v1.ChatService service.
@@ -66,6 +68,16 @@ type ChatServiceClient interface {
 	RenameConversation(context.Context, *connect.Request[v1.RenameConversationRequest]) (*connect.Response[v1.RenameConversationResponse], error)
 	ArchiveConversation(context.Context, *connect.Request[v1.ArchiveConversationRequest]) (*connect.Response[v1.ArchiveConversationResponse], error)
 	DeleteConversation(context.Context, *connect.Request[v1.DeleteConversationRequest]) (*connect.Response[v1.DeleteConversationResponse], error)
+	// Push channel for the news watcher. The stream stays open and the server
+	// sends when something changes — a scan starting, a scan finishing, a new
+	// digest. This is a subscription, not a poll: a scan takes about a minute,
+	// which is far too long to hold a request open for, so the result has to
+	// arrive as a notification rather than as a response.
+	//
+	// The first event on any new stream is always the current state, so a client
+	// that connects mid-scan or long after one renders immediately instead of
+	// waiting for the next change.
+	WatchNews(context.Context, *connect.Request[v1.WatchNewsRequest]) (*connect.ServerStreamForClient[v1.NewsEvent], error)
 }
 
 // NewChatServiceClient constructs a client for the lumi.chat.v1.ChatService service. By default, it
@@ -115,6 +127,12 @@ func NewChatServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(chatServiceMethods.ByName("DeleteConversation")),
 			connect.WithClientOptions(opts...),
 		),
+		watchNews: connect.NewClient[v1.WatchNewsRequest, v1.NewsEvent](
+			httpClient,
+			baseURL+ChatServiceWatchNewsProcedure,
+			connect.WithSchema(chatServiceMethods.ByName("WatchNews")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -126,6 +144,7 @@ type chatServiceClient struct {
 	renameConversation  *connect.Client[v1.RenameConversationRequest, v1.RenameConversationResponse]
 	archiveConversation *connect.Client[v1.ArchiveConversationRequest, v1.ArchiveConversationResponse]
 	deleteConversation  *connect.Client[v1.DeleteConversationRequest, v1.DeleteConversationResponse]
+	watchNews           *connect.Client[v1.WatchNewsRequest, v1.NewsEvent]
 }
 
 // SendMessage calls lumi.chat.v1.ChatService.SendMessage.
@@ -158,6 +177,11 @@ func (c *chatServiceClient) DeleteConversation(ctx context.Context, req *connect
 	return c.deleteConversation.CallUnary(ctx, req)
 }
 
+// WatchNews calls lumi.chat.v1.ChatService.WatchNews.
+func (c *chatServiceClient) WatchNews(ctx context.Context, req *connect.Request[v1.WatchNewsRequest]) (*connect.ServerStreamForClient[v1.NewsEvent], error) {
+	return c.watchNews.CallServerStream(ctx, req)
+}
+
 // ChatServiceHandler is an implementation of the lumi.chat.v1.ChatService service.
 type ChatServiceHandler interface {
 	// One turn. The server persists the user message, runs the guarded
@@ -173,6 +197,16 @@ type ChatServiceHandler interface {
 	RenameConversation(context.Context, *connect.Request[v1.RenameConversationRequest]) (*connect.Response[v1.RenameConversationResponse], error)
 	ArchiveConversation(context.Context, *connect.Request[v1.ArchiveConversationRequest]) (*connect.Response[v1.ArchiveConversationResponse], error)
 	DeleteConversation(context.Context, *connect.Request[v1.DeleteConversationRequest]) (*connect.Response[v1.DeleteConversationResponse], error)
+	// Push channel for the news watcher. The stream stays open and the server
+	// sends when something changes — a scan starting, a scan finishing, a new
+	// digest. This is a subscription, not a poll: a scan takes about a minute,
+	// which is far too long to hold a request open for, so the result has to
+	// arrive as a notification rather than as a response.
+	//
+	// The first event on any new stream is always the current state, so a client
+	// that connects mid-scan or long after one renders immediately instead of
+	// waiting for the next change.
+	WatchNews(context.Context, *connect.Request[v1.WatchNewsRequest], *connect.ServerStream[v1.NewsEvent]) error
 }
 
 // NewChatServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -218,6 +252,12 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(chatServiceMethods.ByName("DeleteConversation")),
 		connect.WithHandlerOptions(opts...),
 	)
+	chatServiceWatchNewsHandler := connect.NewServerStreamHandler(
+		ChatServiceWatchNewsProcedure,
+		svc.WatchNews,
+		connect.WithSchema(chatServiceMethods.ByName("WatchNews")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/lumi.chat.v1.ChatService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ChatServiceSendMessageProcedure:
@@ -232,6 +272,8 @@ func NewChatServiceHandler(svc ChatServiceHandler, opts ...connect.HandlerOption
 			chatServiceArchiveConversationHandler.ServeHTTP(w, r)
 		case ChatServiceDeleteConversationProcedure:
 			chatServiceDeleteConversationHandler.ServeHTTP(w, r)
+		case ChatServiceWatchNewsProcedure:
+			chatServiceWatchNewsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -263,4 +305,8 @@ func (UnimplementedChatServiceHandler) ArchiveConversation(context.Context, *con
 
 func (UnimplementedChatServiceHandler) DeleteConversation(context.Context, *connect.Request[v1.DeleteConversationRequest]) (*connect.Response[v1.DeleteConversationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("lumi.chat.v1.ChatService.DeleteConversation is not implemented"))
+}
+
+func (UnimplementedChatServiceHandler) WatchNews(context.Context, *connect.Request[v1.WatchNewsRequest], *connect.ServerStream[v1.NewsEvent]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("lumi.chat.v1.ChatService.WatchNews is not implemented"))
 }

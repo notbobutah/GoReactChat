@@ -24,5 +24,9 @@ Makefile
 # cluster has none. Excluding it keeps ~6MB of vectors out of every image.
 data/.embeddings/
 
+# The HTML the résumé PDF is rendered from. Tracked so the PDF can be rebuilt,
+# but the service reads the PDF and the markdown, never this.
+data/resume-src/
+
 **/*_test.go
 README.dev.md

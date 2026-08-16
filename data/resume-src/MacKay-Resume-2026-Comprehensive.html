@@ -1,0 +1,300 @@
+<style>
+  :root {
+    --paper: #ffffff;
+    --canvas: #eceff3;
+    --ink: #16202e;
+    --muted-text: #566073;
+    --faint: #8a93a2;
+    --accent: #274472;
+    --accent-2: #3d6098;
+    --rule: #e4e7ec;
+    --chip: #f2f5f8;
+    --shadow: 0 1px 2px rgba(20,32,46,.06), 0 12px 40px rgba(20,32,46,.10);
+
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #10151d; --canvas: #090c11; --ink: #e7ecf2; --muted-text: #9aa6b6;
+      --faint: #6b7686; --accent: #7ea9d8; --accent-2: #9cc0e6; --rule: #232c39;
+      --chip: #1a222d; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #10151d; --canvas: #090c11; --ink: #e7ecf2; --muted-text: #9aa6b6;
+    --faint: #6b7686; --accent: #7ea9d8; --accent-2: #9cc0e6; --rule: #232c39;
+    --chip: #1a222d; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 18px 50px rgba(0,0,0,.55);
+  }
+  :root[data-theme="light"] {
+    --paper: #ffffff; --canvas: #eceff3; --ink: #16202e; --muted-text: #566073;
+    --faint: #8a93a2; --accent: #274472; --accent-2: #3d6098; --rule: #e4e7ec;
+    --chip: #f2f5f8; --shadow: 0 1px 2px rgba(20,32,46,.06), 0 12px 40px rgba(20,32,46,.10);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; line-height: 1.46; }
+
+  .page {
+    max-width: 8.1in; margin: 28px auto; background: var(--paper);
+    padding: 52px 60px 56px; box-shadow: var(--shadow); border-radius: 3px;
+  }
+
+  /* ---- Header ---- */
+  .name { font-family: var(--serif); font-weight: 600; font-size: 33px; letter-spacing: -.01em;
+    margin: 0; line-height: 1.05; }
+  .role-line { font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--accent);
+    letter-spacing: .02em; margin: 7px 0 0; }
+  .contact { font-family: var(--mono); font-size: 11px; color: var(--muted-text); margin-top: 12px;
+    display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; }
+  .contact a { color: var(--muted-text); text-decoration: none; }
+  .contact a:hover { color: var(--accent-2); }
+  .contact .dot { color: var(--faint); }
+  .rule { height: 2px; background: var(--accent); margin: 18px 0 0; border: 0; opacity: .9;
+    width: 46px; }
+
+  /* ---- Sections ---- */
+  section { margin-top: 26px; }
+  .sec-label { font-family: var(--sans); font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .16em; color: var(--accent); display: flex; align-items: center; gap: 9px;
+    margin: 0 0 13px; }
+  .sec-label::after { content: ""; flex: 1; height: 1px; background: var(--rule); }
+
+  .summary { font-size: 13.5px; color: var(--ink); margin: 0; max-width: 70ch; }
+  .summary strong { color: var(--accent); font-weight: 600; }
+
+  /* ---- Skills ---- */
+  .skills { display: grid; gap: 8px 26px; grid-template-columns: 1fr 1fr; }
+  .skill-row { font-size: 12.5px; color: var(--muted-text); }
+  .skill-row b { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600; display: block; margin-bottom: 1px; }
+
+  /* ---- Experience ---- */
+  .job { margin-bottom: 18px; break-inside: avoid; }
+  .job-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+  .job-title { font-size: 14px; font-weight: 700; color: var(--ink); }
+  .job-title .co { color: var(--accent); }
+  .job-dates { font-family: var(--mono); font-size: 10.5px; color: var(--faint); white-space: nowrap;
+    letter-spacing: .01em; }
+  .job-intro { font-size: 12.7px; color: var(--muted-text); margin: 4px 0 6px; max-width: 82ch; }
+  ul.pts { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+  ul.pts li { position: relative; padding-left: 16px; font-size: 12.7px; color: var(--ink); max-width: 84ch; }
+  ul.pts li::before { content: ""; position: absolute; left: 2px; top: 8px; width: 5px; height: 5px;
+    background: var(--accent); border-radius: 1px; opacity: .85; }
+  .metric { color: var(--accent); font-weight: 600; }
+
+  /* ---- Compact earlier roles ---- */
+  .earlier { font-size: 12.3px; color: var(--muted-text); line-height: 1.65; }
+  .earlier b { color: var(--ink); font-weight: 600; }
+  .earlier .yr { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+  .two-col { display: grid; grid-template-columns: 1.35fr 1fr; gap: 26px; }
+  .kv { font-size: 12.6px; color: var(--muted-text); }
+  .kv b { color: var(--ink); font-weight: 600; }
+  .kv .sub { font-family: var(--mono); font-size: 10px; color: var(--faint); }
+
+  @media (max-width: 640px) {
+    .page { padding: 30px 22px 34px; margin: 0; border-radius: 0; }
+    .skills, .two-col { grid-template-columns: 1fr; }
+    .job-head { flex-direction: column; gap: 1px; }
+    .name { font-size: 27px; }
+  }
+
+  @media print {
+    :root { --paper:#fff; --canvas:#fff; --ink:#16202e; --muted-text:#566073; --faint:#8a93a2;
+      --accent:#274472; --accent-2:#3d6098; --rule:#e4e7ec; --chip:#f2f5f8; --shadow:none; }
+    @page { size: letter; margin: 0.5in; }
+    body { background: #fff; }
+    .page { margin: 0; max-width: 100%; padding: 0; box-shadow: none; }
+    section { margin-top: 18px; }
+    .job { margin-bottom: 14px; }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <h1 class="name">Robert R. MacKay</h1>
+    <p class="role-line">Chief Technology Officer&nbsp;· Software Architect&nbsp;· AI-Native Platforms</p>
+    <div class="contact">
+      <span>Salt Lake City, UT</span><span class="dot">•</span>
+      <a href="mailto:rrmackay@gmail.com">rrmackay@gmail.com</a><span class="dot">•</span>
+      <a href="tel:+18017870504">801-787-0504</a><span class="dot">•</span>
+      <a href="https://www.linkedin.com/in/robert-r-mackay/">linkedin.com/in/robert-r-mackay</a>
+    </div>
+    <hr class="rule" />
+  </header>
+
+  <section>
+    <p class="sec-label">Summary</p>
+    <p class="summary">
+      Hands-on technology leader and software architect with <strong>25+ years</strong> turning
+      emerging technology into shipped, production platforms across full delivery lifecycles — TDD,
+      Agile/Scrum/Kanban, and modern GitOps deployment. Currently CTO of an AI-native
+      marketing-intelligence platform built on agentic AI and semantic retrieval; previously drove an
+      enterprise SaaS cloud migration to <strong>80–90% customer adoption</strong> and delivered
+      real-time trading, fintech, public-safety, and enterprise integration systems. Equally
+      comfortable setting technical strategy and writing the code that proves it.
+    </p>
+  </section>
+
+  <section>
+    <p class="sec-label">Core Expertise</p>
+    <div class="skills">
+      <div class="skill-row"><b>AI &amp; Data</b>Agentic AI &amp; LLM orchestration (CrewAI), semantic retrieval (ChromaDB), ML/MDM evaluation (DataRobot, SageMaker, TAMR)</div>
+      <div class="skill-row"><b>Architecture</b>AI-native &amp; microservices platforms, multi-tenant SaaS, event-driven systems, API &amp; integration design</div>
+      <div class="skill-row"><b>Cloud &amp; DevOps</b>Kubernetes, Docker, Terraform, Helm, AWS, Azure, GitOps CI/CD, schema-migration pipelines, Telepresence</div>
+      <div class="skill-row"><b>Languages</b>TypeScript · Next.js/React · Node.js · Go · C# · Java · Python · PHP</div>
+      <div class="skill-row"><b>Data &amp; Security</b>PostgreSQL, Drizzle ORM, Oracle, Redis, MariaDB · OAuth/OIDC, Keycloak, Azure AD/SSO, DISA</div>
+      <div class="skill-row"><b>Leadership</b>Technical strategy, multi-team &amp; onshore/offshore delivery, Agile/Scrum/TDD/OneFlow, mentoring</div>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-label">Experience</p>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Chief Technology Officer — <span class="co">Expona&nbsp;AI</span></span>
+        <span class="job-dates">Jul 2023 – Present</span>
+      </div>
+      <p class="job-intro">Architected and shipped a <span class="metric">20-service, 30-repository</span>
+        AI-native marketing-intelligence platform — a Next.js/TypeScript web app, Python CrewAI
+        generation services, and a dedicated TypeScript agent runtime — running on Kubernetes across
+        dev, stage, and prod, and operated end-to-end by a <span class="metric">3-engineer team</span>.
+        Users create a project from nothing more than a company name or URL, and the platform fills it
+        in through direct LLM processing of loaded content and dynamic selection across specialized
+        agent crews.</p>
+      <ul class="pts">
+        <li>Built <span class="metric">20+ CrewAI agent crews</span> that generate buyer personas, competitive intelligence, and campaign content on demand, dynamically selecting the right crew for each request.</li>
+        <li>Delivered semantic retrieval through a ChromaDB-backed Knowledge Service so agents reason against embedded, workspace-scoped context rather than raw prompts.</li>
+        <li>Designed a provenance &amp; “composition-receipt” layer so every AI-generated claim is traceable to its sources — with field-level provenance and anti-clobber locks that protect human edits from automated regeneration.</li>
+        <li>Enforced workspace-scoped multi-tenant isolation on every read and write, keeping each customer’s data cleanly partitioned across the platform.</li>
+        <li>Stood up GitOps CI/CD with a schema-migration pipeline (Postgres branch previews, destructive-change lint gates, gated dev→prod promotion) and Redis pub/sub for multi-pod real-time updates.</li>
+        <li>Shipped a vendor-agnostic publishing layer (social + email) behind a single provider interface — verified end-to-end from chat to LinkedIn and to the inbox.</li>
+        <li>Built in-product support on GitHub as the system of record — tickets open as issues with priority, category and status encoded as labels — with Telegram push alerts gated to high and urgent priority so the channel stays a pager rather than a firehose, and designed to fail open: a notification outage or missing configuration degrades to a logged warning and never blocks a ticket from being filed.</li>
+        <li>Established developer-first practices — codemods, Telepresence-based live debugging, and branch/tag deployments with TLS across every environment.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Consultant — <span class="co">Utah State Board of Education</span></span>
+        <span class="job-dates">Aug 2023 – Nov 2024 · concurrent</span>
+      </div>
+      <ul class="pts">
+        <li>Built C# financial-reporting systems supporting statewide school-district and charter-school compliance, with Azure DevOps pipelines for build, release, process management, and repository governance.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Architect — <span class="co">CHG Healthcare</span></span>
+        <span class="job-dates">Jul 2021 – Oct 2022</span>
+      </div>
+      <p class="job-intro">Focused on data-quality initiatives, running a series of proof-of-value projects to vet vendor offerings in the master-data-management domain and mapping where ML fits versus where purpose-built MDM tooling wins.</p>
+      <ul class="pts">
+        <li>Led MDM/ML proof-of-value evaluations across DataRobot, AWS SageMaker, and TAMR — ultimately selecting TAMR — clarifying which data-quality problems each tool is genuinely suited to.</li>
+        <li>Acted as team architect across three Scrum teams and architected a Kafka-based data-hub project.</li>
+        <li>Authored “zero-to-hero” workshop documentation onboarding new developers onto the platform and systems to build new projects.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Architect — <span class="co">Earnest</span></span>
+        <span class="job-dates">Apr 2020 – Mar 2021</span>
+      </div>
+      <p class="job-intro">Product-vertical architect on the monolith-to-microservices redesign at a fintech lender spun out of a large student-loan processor bringing new technology to market.</p>
+      <ul class="pts">
+        <li>Re-architected the online loan application into independent pages and data submissions, so the flow could be reordered with minimal effort — which the UX team used to A/B-test scenarios and lift conversion rates.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Architect — <span class="co">Assure Services</span></span>
+        <span class="job-dates">Jul 2019 – Jan 2020</span>
+      </div>
+      <p class="job-intro">Joined into an environment with no coherent infrastructure strategy and unpredictable releases; defined and delivered a modern Kubernetes-based platform and development process end to end.</p>
+      <ul class="pts">
+        <li>Replaced ad-hoc AWS EC2/Fargate releases with an EKS + Terraform + Helm platform providing isolated feature, stage, and production environments; automated deployment via GitLab runners in the dev cluster.</li>
+        <li>Instituted a OneFlow development process tying JIRA, GitLab, and cloud test systems into a seamless flow, turning unpredictable releases into repeatable ones.</li>
+        <li>Implemented Azure AD OIDC SSO for the SaaS application and set PaaS/SaaS strategy with a path to Azure-hosted Kubernetes.</li>
+        <li>Managed a 3–6 person onshore/offshore team and built a career-development plan around Pluralsight training and relevant certifications.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Engineer — <span class="co">Omadi, Inc.</span></span>
+        <span class="job-dates">Jul 2018 – Jul 2019</span>
+      </div>
+      <p class="job-intro">Full-stack role building road-incident-management systems across web, mobile, and high-performance backend services.</p>
+      <ul class="pts">
+        <li>Built complex multiform mobile applications in React, React-Native, and Titanium, with end-to-end test automation via Appium and Selenium WebDriver (Node and Java) targeting device farms.</li>
+        <li>Developed backend services ranging from gRPC in Go and Java for high-performance inter-cluster communication to Node and PHP REST services for generic access — all deployed on AWS Kubernetes with Jenkins, GitFlow, and Bitbucket pipelines.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Engineer — <span class="co">J.P. Morgan</span></span>
+        <span class="job-dates">Mar 2017 – Jul 2018</span>
+      </div>
+      <ul class="pts">
+        <li>Built a high-speed FX trading platform (Spring Async) streaming real-time market data alongside on-demand quotes from multiple providers into existing desktop trading systems via a web-based stream display.</li>
+        <li>Automated the pipeline with Maven, Gradle, Jenkins, Helm, and Chef targeting Kubernetes clusters in a private cloud; secured with Keycloak/OAuth and hardened network architecture.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Senior Software Architect — <span class="co">Ellucian</span></span>
+        <span class="job-dates">2007 – Jan 2017</span>
+      </div>
+      <p class="job-intro">Owned product analysis and future-vision definition for a next-generation higher-education platform, from strategy and prototypes through delivery, evangelism, and cloud transformation across geographically dispersed teams.</p>
+      <ul class="pts">
+        <li>Set the technical vision and evangelized it to the existing customer base, reaching <span class="metric">80–90% adoption</span> of the new platform over several years.</li>
+        <li>Led the conversion of the enterprise software to cloud compatibility on AWS services, then moved into a cloud-architect role designing and building new cloud-native services.</li>
+      </ul>
+    </div>
+
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">Chief Technology Officer &amp; Co-Founder — <span class="co">AlertFM</span></span>
+        <span class="job-dates">2005 – 2007</span>
+      </div>
+      <ul class="pts">
+        <li>Delivered a wireless public-safety alerting platform for the Dept. of Homeland Security and Mississippi Emergency Management — engineered to run independent of traditional communications and power to reach first responders and the public during crises.</li>
+        <li>As founder, owned the product end-to-end: contracts, office and team creation, hiring and management, architecture, and customer acceptance by local, state, and federal contract managers.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-label">Earlier Career</p>
+    <p class="earlier">
+      <b>Contract Security Architect</b>, SPAWAR <span class="yr">2004–05</span> — HR/career-management systems on PeopleSoft integration broker across distributed systems; cross-domain security architecture and documentation to DISA approval. &nbsp;·&nbsp;
+      <b>Development Team Lead</b>, SirsiDynix <span class="yr">2002–03</span> — defined the engineering process and led a J2EE next-generation library-automation platform (JBoss, Oracle, Struts, XML/XSL) on a 70-engineer program. &nbsp;·&nbsp;
+      <b>Team Lead</b>, Verticore <span class="yr">2001–02</span> — object-oriented plant-management suite (VPS) improving operating efficiency in oil &amp; gas refineries; UML-driven Rational process on Java/XML/XSLT and the Oracle stack. &nbsp;·&nbsp;
+      <b>Director, Integration Solutions</b>, Ventro <span class="yr">1999–2001</span> — distributed data-integration solution (web services, JMS, redeployable connectors) for healthcare and life sciences; awarded U.S. patent for embedded-transaction-history data transport.
+    </p>
+  </section>
+
+  <section>
+    <div class="two-col">
+      <div>
+        <p class="sec-label">Patent</p>
+        <p class="kv"><b>Hub &amp; Spoke Architecture and Methods for Electronic Commerce</b><br>
+          <span class="sub">US PCT/US2001/003087</span> — B2B commerce integration via standardized XML/EDI and ERP interfaces.</p>
+      </div>
+      <div>
+        <p class="sec-label">Education</p>
+        <p class="kv"><b>Utah Valley University</b><br>
+          Associate of Science — Electronics, Electrical Engineering &amp; Mathematics</p>
+      </div>
+    </div>
+  </section>
+</div>

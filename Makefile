@@ -98,6 +98,18 @@ resume-md:
 	cd $(SERVER) && $(GO) run ./cmd/pdf2md "$(PDF)" > "$(basename $(PDF)).md"
 	@echo "wrote $(basename $(PDF)).md — review it; the converter is best-effort"
 
+## resume-pdf: re-render the résumé PDF from its HTML source
+# Headless Chrome is what produced the original: rendering the untouched source
+# reproduces it with an identical text layer and a 26-byte size difference, so
+# this is the same pipeline rather than a lookalike. Edit the HTML, run this,
+# then resume-public.
+RESUME_HTML ?= data/resume-src/MacKay-Resume-2026-Comprehensive.html
+CHROME ?= google-chrome
+resume-pdf:
+	$(CHROME) --headless --disable-gpu --no-sandbox --no-pdf-header-footer \
+		--print-to-pdf="$(abspath $(RESUME_PDF))" "file://$(abspath $(RESUME_HTML))"
+	@echo "rendered $(RESUME_HTML) -> $(RESUME_PDF); check the page count before shipping"
+
 ## resume-public: refresh the downloadable PDF in web/public from data/
 # data/ is the source of truth — the corpus the model answers from is loaded
 # from there, and web/public/ only holds the copy the browser serves. Without a
@@ -172,6 +184,6 @@ deploy:
 	kubectl -n dev-next rollout status deployment/lumi-go-web --timeout=5m
 
 .PHONY: help generate lint-proto build test vet db-up db-down migrate dev-server dev-offline dev-web web-build \
-	refs resume-md resume-public rag-check \
+	refs resume-md resume-pdf resume-public rag-check \
 	image image-web image-run image-web-run ghcr-login image-push image-push-multi \
 	deploy-dry-run deploy

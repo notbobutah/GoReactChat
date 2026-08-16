@@ -34,7 +34,7 @@ count all contributors.
 | [SpotLight-2](https://github.com/notbobutah/SpotLight-2) | 2022-09-06 | 2023-01-07 | JavaScript | 4 | Second iteration of the Spotlight demo, re-based on a newer JS stack. |
 | [Spotlight-REST-JPA](https://github.com/notbobutah/Spotlight-REST-JPA) | 2023-01-20 | 2023-01-23 | Java | 18 | The Spotlight API re-implemented in Spring Boot 2.7 on Java 17 — JPA/Hibernate against Postgres, Springfox/Swagger, containerised. |
 | [Spotlight-IoT](https://github.com/notbobutah/Spotlight-IoT) | 2023-02-23 | 2023-06-23 | TypeScript | 56 | The largest project on the account. Merges two prior projects into one deployable system: React diagramming front end, Node REST API, the ThingsBoard IoT platform, a Raspberry Pi pseudo-device in a VM, docker-compose for local clusters, and deployment to Google Kubernetes Engine via GitHub Actions. Carries a day-by-day task list and a LucidChart deployment diagram. |
-| [GoReactChat](https://github.com/notbobutah/GoReactChat) | 2026-08-15 | 2026-08-15 | Go | — | This project: a gRPC/Connect streaming chat service in Go with a React (Next.js) client, retrieval over local embeddings, and two agents — a hand-written streaming tool-use loop against the Anthropic Go SDK, and a research agent whose tool loop executes server-side on xAI. Deployed to Kubernetes behind TLS; images published to GitHub Packages. |
+| [GoReactChat](https://github.com/notbobutah/GoReactChat) | 2026-08-15 | 2026-08-16 | Go | 25 | This project: a gRPC/Connect streaming chat service in Go with a React (Next.js) client, retrieval over local embeddings, and two agents — a hand-written streaming tool-use loop against the Anthropic Go SDK, and a research agent whose tool loop executes server-side on xAI. Deployed to Kubernetes behind TLS; images published to GitHub Packages. |
 
 ---
 
@@ -135,6 +135,12 @@ Several of the older repositories were pushed as a single commit, so they show
 the finished artifact rather than the history that produced it. On those,
 repository size and README depth are the better signal.
 
+GoReactChat is the exception, and deliberately so: its history is incremental
+and readable, each commit scoped to one change with the reasoning in the message
+rather than in someone's memory. It is the one repository on the account where
+how the work was done is visible, not just what it produced — which is the point
+of shipping it publicly for this application.
+
 **This is a sample, not the body of work.** The platform described on the
 résumé — 20 services across 30 repositories, built and operated with a
 three-engineer team — is private, as commercial work is. This account holds
@@ -146,7 +152,7 @@ completeness and marked as such rather than presented as authored work.
 
 ## Provenance
 
-Compiled from the GitHub REST API on 2026-08-15 (UTC):
+Compiled from the GitHub REST API on 2026-08-16 (UTC):
 
 - `GET /users/notbobutah/repos` — names, descriptions, creation and push dates,
   fork and archive flags, primary language

@@ -104,12 +104,18 @@ web-build:
 refs:
 	cd $(SERVER) && $(GO) run ./cmd/fetchrefs -data ../data
 
-## resume-md: regenerate the markdown résumé from the source PDF
-## Usage: make resume-md PDF=../data/Your-Resume.pdf
-PDF ?= ../data/MacKay-Resume-2026-Comprehensive.pdf
+## resume-md: regenerate the markdown résumé from the HTML source
+# From the HTML, NOT from the PDF. A PDF has no structure — only positioned
+# text — so converting the artifact collapsed every role's bullets into one
+# paragraph that attached to whatever heading came last, filing four employers'
+# accomplishments (including "gRPC in Go") under EARLIER CAREER. The service
+# answers from this file, so it was answering from that.
+#
+# cmd/pdf2md still exists for a résumé that arrives as a PDF and nothing else,
+# but it is the fallback now, not the path.
 resume-md:
-	cd $(SERVER) && $(GO) run ./cmd/pdf2md "$(PDF)" > "$(basename $(PDF)).md"
-	@echo "wrote $(basename $(PDF)).md — review it; the converter is best-effort"
+	cd $(SERVER) && $(GO) run ./cmd/resume2md "../$(RESUME_HTML)" > "../$(RESUME_MD)"
+	@echo "wrote $(RESUME_MD) from $(RESUME_HTML)"
 
 ## resume-pdf: re-render the résumé PDF from its HTML source
 # Headless Chrome is what produced the original: rendering the untouched source
@@ -132,6 +138,7 @@ resume-pdf:
 # resume-md cds there before running the converter. This target runs from the
 # repository root, so it needs its own root-relative path.
 RESUME_PDF ?= data/MacKay-Resume-2026-Comprehensive.pdf
+RESUME_MD  ?= data/MacKay-Resume-2026-Comprehensive.md
 resume-public:
 	cp "$(RESUME_PDF)" $(WEB)/public/Robert-MacKay-Resume.pdf
 	@echo "copied $(RESUME_PDF) -> $(WEB)/public/Robert-MacKay-Resume.pdf"

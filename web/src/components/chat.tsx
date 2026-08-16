@@ -390,8 +390,12 @@ const SUGGESTIONS: { label: string; question: string }[] = [
   },
   {
     label: "AI agents",
+    // Leads with the agent running in THIS application, because that is the
+    // claim a reader can check on the spot — the panel beside the chat is the
+    // agent's live output. Asking the general question first invited a career
+    // summary, and buried the one piece of evidence in the room.
     question:
-      "Has he personally built AI agents, or only consumed LLM APIs? What is the evidence?",
+      "Start with the agent running in this application right now: how does it execute, and where does its tool loop actually run? Then cover his wider agent work and the evidence for it.",
   },
   {
     label: "Fit for this role",

@@ -10,7 +10,7 @@ Hands-on technology leader and software architect with 25+ years turning emergin
 
 ### AI & DATA
 
-Agentic AI & LLM orchestration (CrewAI), semantic retrieval (ChromaDB), ML/MDM evaluation (DataRobot, SageMaker, TAMR)
+Agentic AI & LLM orchestration (CrewAI, Anthropic, xAI server-side agent tools), streaming tool-use loops, semantic retrieval (ChromaDB, local embeddings), ML/MDM evaluation (DataRobot, SageMaker, TAMR)
 
 ### ARCHITECTURE
 
@@ -81,6 +81,14 @@ Owned product analysis and future-vision definition for a next-generation higher
 ### Chief Technology Officer & Co-Founder — AlertFM
 
 *2005 – 2007*
+
+## SELECTED PROJECT — PUBLIC SOURCE
+
+### GoReactChat — github.com/notbobutah/GoReactChat
+
+*2026 · Go, gRPC, Next.js*
+
+A gRPC/Connect streaming chat service in Go with a React client, running on Kubernetes behind TLS. Built as verifiable evidence rather than a portfolio piece: the code is public, the deployment is live, and the service answers questions about this résumé using it as its grounding corpus. One connect-go handler serves gRPC, gRPC-Web and Connect from a single wire contract, with server-streaming turns over h2c and TLS terminated at the ingress. Hand-written streaming tool-use loop against the Anthropic Go SDK — including a recall guard rail that discards a model's "let me check" preamble once a retrieval tool returns, so the reader sees the answer rather than the narration. Retrieval-augmented grounding over locally generated embeddings, with per-document-kind balancing so one long document cannot crowd out the rest of a corpus. A second agent watches Go, gRPC and Protobuf releases with its tool loop executing server-side on xAI: a single Responses API request declares the tools and the model runs roughly fifteen web searches, reads and iterates there. No local agent loop and no additional service — the application subscribes and is pushed the result over a streaming RPC, because a scan takes about a minute. Because that agent bills per tool call rather than per token, spend is bounded by frequency: it scans only while a client is subscribed, at most once per interval, one scan at a time however many are watching, and the last result is persisted so a restart restores instead of rescanning. Total spend capped service-wide and persisted in Postgres, with per-request and per-conversation ceilings — the substitute for authentication on a deliberately public, sign-in-free deployment.
 
 ### EARLIER CAREER
 

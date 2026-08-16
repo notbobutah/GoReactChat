@@ -110,6 +110,11 @@
     .page { margin: 0; max-width: 100%; padding: 0; box-shadow: none; }
     section { margin-top: 18px; }
     .job { margin-bottom: 14px; }
+    /* Keep a section heading with the content it introduces. Without this a
+       label can be pushed to the foot of a page and orphaned from its own
+       section, which is what happened when the Selected Project block landed
+       across the page 3/4 boundary. */
+    .sec-label { break-after: avoid; }
   }
 </style>
 
@@ -142,7 +147,7 @@
   <section>
     <p class="sec-label">Core Expertise</p>
     <div class="skills">
-      <div class="skill-row"><b>AI &amp; Data</b>Agentic AI &amp; LLM orchestration (CrewAI), semantic retrieval (ChromaDB), ML/MDM evaluation (DataRobot, SageMaker, TAMR)</div>
+      <div class="skill-row"><b>AI &amp; Data</b>Agentic AI &amp; LLM orchestration (CrewAI, Anthropic, xAI server-side agent tools), streaming tool-use loops, semantic retrieval (ChromaDB, local embeddings), ML/MDM evaluation (DataRobot, SageMaker, TAMR)</div>
       <div class="skill-row"><b>Architecture</b>AI-native &amp; microservices platforms, multi-tenant SaaS, event-driven systems, API &amp; integration design</div>
       <div class="skill-row"><b>Cloud &amp; DevOps</b>Kubernetes, Docker, Terraform, Helm, AWS, Azure, GitOps CI/CD, schema-migration pipelines, Telepresence</div>
       <div class="skill-row"><b>Languages</b>TypeScript · Next.js/React · Node.js · Go · C# · Java · Python · PHP</div>
@@ -269,6 +274,41 @@
       <ul class="pts">
         <li>Delivered a wireless public-safety alerting platform for the Dept. of Homeland Security and Mississippi Emergency Management — engineered to run independent of traditional communications and power to reach first responders and the public during crises.</li>
         <li>As founder, owned the product end-to-end: contracts, office and team creation, hiring and management, architecture, and customer acceptance by local, state, and federal contract managers.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <p class="sec-label">Selected Project — Public Source</p>
+    <div class="job">
+      <div class="job-head">
+        <span class="job-title">GoReactChat — <span class="co">github.com/notbobutah/GoReactChat</span></span>
+        <span class="job-dates">2026 · Go, gRPC, Next.js</span>
+      </div>
+      <p class="job-intro">A gRPC/Connect streaming chat service in Go with a React client, running on
+        Kubernetes behind TLS. Built as verifiable evidence rather than a portfolio piece: the code is
+        public, the deployment is live, and the service answers questions about this résumé using it as
+        its grounding corpus.</p>
+      <ul class="pts">
+        <li>One <span class="metric">connect-go</span> handler serves gRPC, gRPC-Web and Connect from a
+          single wire contract, with server-streaming turns over h2c and TLS terminated at the ingress.</li>
+        <li>Hand-written streaming tool-use loop against the Anthropic Go SDK — including a recall guard
+          rail that discards a model&rsquo;s &ldquo;let me check&rdquo; preamble once a retrieval tool returns, so the
+          reader sees the answer rather than the narration.</li>
+        <li>Retrieval-augmented grounding over locally generated embeddings, with per-document-kind
+          balancing so one long document cannot crowd out the rest of a corpus.</li>
+        <li>A second agent watches Go, gRPC and Protobuf releases with its tool loop executing
+          <span class="metric">server-side on xAI</span>: a single Responses API request declares the
+          tools and the model runs roughly fifteen web searches, reads and iterates there. No local
+          agent loop and no additional service — the application subscribes and is pushed the result
+          over a streaming RPC, because a scan takes about a minute.</li>
+        <li>Because that agent bills per tool call rather than per token, spend is bounded by frequency:
+          it scans only while a client is subscribed, at most once per interval, one scan at a time
+          however many are watching, and the last result is persisted so a restart restores instead of
+          rescanning.</li>
+        <li>Total spend capped service-wide and persisted in Postgres, with per-request and
+          per-conversation ceilings — the substitute for authentication on a deliberately public,
+          sign-in-free deployment.</li>
       </ul>
     </div>
   </section>

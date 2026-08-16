@@ -34,7 +34,7 @@ count all contributors.
 | [SpotLight-2](https://github.com/notbobutah/SpotLight-2) | 2022-09-06 | 2023-01-07 | JavaScript | 4 | Second iteration of the Spotlight demo, re-based on a newer JS stack. |
 | [Spotlight-REST-JPA](https://github.com/notbobutah/Spotlight-REST-JPA) | 2023-01-20 | 2023-01-23 | Java | 18 | The Spotlight API re-implemented in Spring Boot 2.7 on Java 17 — JPA/Hibernate against Postgres, Springfox/Swagger, containerised. |
 | [Spotlight-IoT](https://github.com/notbobutah/Spotlight-IoT) | 2023-02-23 | 2023-06-23 | TypeScript | 56 | The largest project on the account. Merges two prior projects into one deployable system: React diagramming front end, Node REST API, the ThingsBoard IoT platform, a Raspberry Pi pseudo-device in a VM, docker-compose for local clusters, and deployment to Google Kubernetes Engine via GitHub Actions. Carries a day-by-day task list and a LucidChart deployment diagram. |
-| [GoReactChat](https://github.com/notbobutah/GoReactChat) | 2026-08-15 | 2026-08-15 | Go | — | This project: a gRPC/Connect streaming chat service in Go with a React (Next.js) client, retrieval over local embeddings, and a container image published to GitHub Packages. |
+| [GoReactChat](https://github.com/notbobutah/GoReactChat) | 2026-08-15 | 2026-08-15 | Go | — | This project: a gRPC/Connect streaming chat service in Go with a React (Next.js) client, retrieval over local embeddings, and two agents — a hand-written streaming tool-use loop against the Anthropic Go SDK, and a research agent whose tool loop executes server-side on xAI. Deployed to Kubernetes behind TLS; images published to GitHub Packages. |
 
 ---
 
@@ -74,6 +74,26 @@ across AWS and GCP.
 ---
 
 ## What this account does and does not cover
+
+**Two agent implementations, deliberately different.** GoReactChat contains
+both shapes of agent, which is the more useful signal than either alone. The
+chat runs a tool-use loop written by hand in Go against the Anthropic SDK —
+accumulating tool calls mid-stream, dispatching them, feeding results back, and
+discarding a "let me check" preamble once a retrieval tool returns. The news
+watcher does the opposite: a single request to xAI's Responses API declares the
+tools, and the model runs roughly fifteen web searches, reads and iterates on
+xAI's infrastructure. No loop, no scheduler and no extra service on this side.
+
+The second one is the more interesting engineering problem, because moving the
+loop off your own machine moves the risk rather than removing it. A scan takes
+about a minute, so the result cannot be returned in a response — it arrives over
+a server-streaming RPC the browser subscribes to. And it bills per tool call
+rather than per token, so the usual token budget does not bound it: spend is
+capped by frequency instead — it runs only while somebody is subscribed, once
+per interval, one scan at a time, with the last result persisted so a restart
+restores instead of rescanning. The digest reports its own tool-call count in
+the UI, on the principle that an autonomous agent whose cost is invisible is one
+nobody notices running away.
 
 **Public Go begins with this project.** Before GoReactChat the account has one
 Go repository — `on-xml-proxy`, about 10 KB of SOAP/XML examples from 2019.

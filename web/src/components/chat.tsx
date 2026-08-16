@@ -254,7 +254,11 @@ export function Chat() {
  */
 function Sidebar() {
   return (
-    <aside className="hidden w-72 shrink-0 flex-col gap-5 border-r border-black/10 px-6 py-6 lg:flex dark:border-white/15">
+    // h-dvh + overflow-y-auto so the rail scrolls inside itself. The page is a
+    // fixed-height app shell; once the news panel made this column taller than
+    // the viewport, without this the whole document scrolled and took the chat
+    // input off screen with it.
+    <aside className="hidden h-dvh w-72 shrink-0 flex-col gap-5 overflow-y-auto border-r border-black/10 px-6 py-6 lg:flex dark:border-white/15">
       <Image
         src="/pixar-pops.png"
         alt="Robert MacKay"

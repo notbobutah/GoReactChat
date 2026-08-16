@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { NewsPanel } from "@/components/news-panel";
 import { authHeaders, chatClient, conversationId, resetConversation } from "@/lib/chat-client";
@@ -294,34 +294,39 @@ export function Chat() {
       )}
 
       {messages.length > 0 && (
-        <div className="flex flex-wrap items-center justify-center gap-2 border-t border-black/10 px-6 pt-3 dark:border-white/15">
-          {/* Not a prompt, so it is set apart from the prompt chips rather than
-              mixed in among them — clicking it does something to the page, not
-              to the conversation. */}
-          <button
-            type="button"
-            onClick={startNew}
-            title="Clear this conversation and start a new one"
-            className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-black/20 px-3 py-1 text-[11px] text-black/55 transition hover:border-black/45 hover:text-black dark:border-white/25 dark:text-white/55 dark:hover:border-white/50 dark:hover:text-white"
-          >
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="size-3 shrink-0"
+        <Suggestions
+          onPick={(q) => void send(q)}
+          disabled={busy}
+          className="items-center border-t border-black/10 px-6 pt-3 dark:border-white/15"
+          compact
+          leading={
+            /* Not a prompt, so it is set apart from the prompt chips rather
+               than mixed in among them — clicking it does something to the
+               page, not to the conversation. First in the row, so it stays in
+               view on a phone where the row scrolls. */
+            <button
+              type="button"
+              onClick={startNew}
+              title="Clear this conversation and start a new one"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-dashed border-black/20 px-3 py-1 text-[11px] whitespace-nowrap text-black/55 transition hover:border-black/45 hover:text-black dark:border-white/25 dark:text-white/55 dark:hover:border-white/50 dark:hover:text-white"
             >
-              <path d="M12 7a5 5 0 1 1-1.6-3.7" />
-              <path d="M12 1.5V4H9.5" />
-            </svg>
-            New conversation
-          </button>
-
-          <Suggestions onPick={(q) => void send(q)} disabled={busy} compact />
-        </div>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 14 14"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="size-3 shrink-0"
+              >
+                <path d="M12 7a5 5 0 1 1-1.6-3.7" />
+                <path d="M12 1.5V4H9.5" />
+              </svg>
+              New conversation
+            </button>
+          }
+        />
       )}
 
       <form
@@ -555,14 +560,27 @@ function Suggestions({
   disabled,
   className = "",
   compact = false,
+  leading,
 }: {
   onPick: (question: string) => void;
   disabled?: boolean;
   className?: string;
   compact?: boolean;
+  /** Rendered first, inside the same row — so it scrolls with the chips. */
+  leading?: ReactNode;
 }) {
   return (
-    <div className={`flex flex-wrap justify-center gap-2 ${className}`}>
+    // One scrolling row on a phone, wrapped and centred from lg.
+    //
+    // Six chips wrapped to three rows at 390px, which is a large share of a
+    // screen where the conversation is the point. Scrolling keeps every
+    // suggestion reachable at the cost of one row. The scrollbar is hidden
+    // because the chips are visibly cut off at the edge, which says "there is
+    // more" without a bar across them.
+    <div
+      className={`flex gap-2 overflow-x-auto [scrollbar-width:none] lg:flex-wrap lg:justify-center lg:overflow-visible [&::-webkit-scrollbar]:hidden ${className}`}
+    >
+      {leading}
       {SUGGESTIONS.map((s) => (
         <button
           key={s.label}
@@ -570,7 +588,7 @@ function Suggestions({
           onClick={() => onPick(s.question)}
           disabled={disabled}
           title={s.question}
-          className={`rounded-full border border-black/15 text-black/70 transition hover:border-black/40 hover:text-black disabled:opacity-40 dark:border-white/20 dark:text-white/70 dark:hover:border-white/50 dark:hover:text-white ${
+          className={`shrink-0 rounded-full border border-black/15 whitespace-nowrap text-black/70 transition hover:border-black/40 hover:text-black disabled:opacity-40 dark:border-white/20 dark:text-white/70 dark:hover:border-white/50 dark:hover:text-white ${
             compact ? "px-3 py-1 text-[11px]" : "px-3.5 py-1.5 text-xs"
           }`}
         >

@@ -26,7 +26,12 @@ export function Chat() {
 
   const convIdRef = useRef<string>("");
   const abortRef = useRef<AbortController | null>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // Whether the view is following the newest output. False once the reader
+  // scrolls away from the bottom, which is the whole point: a turn streams for
+  // many seconds, and pinning the view to the end made the transcript
+  // unreadable while it was still being written.
+  const [following, setFollowing] = useState(true);
 
   // Resume the tab's conversation on mount. A brand-new id has no history
   // server-side, which comes back as not_found — expected, not an error.
@@ -56,9 +61,40 @@ export function Chat() {
     })();
   }, []);
 
+  // Jump the container itself, instantly.
+  //
+  // Not scrollIntoView with smooth behaviour: a smooth scroll fires onScroll
+  // repeatedly on the way down, each time reporting a distance that still looks
+  // like "the reader has scrolled away" — so following would switch itself off
+  // mid-animation, and the button to re-attach would cancel itself the moment
+  // it was pressed. An instant jump fires one event, at the destination.
+  const scrollToBottom = useCallback(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, []);
+
+  // Auto-scroll only while the reader is at the end. Reading back through a
+  // long answer used to be impossible mid-turn — every token yanked the view
+  // down again.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streaming]);
+    if (!following) return;
+    scrollToBottom();
+  }, [messages, streaming, liveBlocks, following, scrollToBottom]);
+
+  // A small tolerance rather than an exact match: smooth scrolling and
+  // sub-pixel heights mean "at the bottom" is rarely exactly zero, and a strict
+  // test would drop out of follow mode on its own scrolling.
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setFollowing(distanceFromBottom < 80);
+  }, []);
+
+  const jumpToLatest = useCallback(() => {
+    scrollToBottom();
+    setFollowing(true);
+  }, [scrollToBottom]);
 
   /**
    * Start a blank thread.
@@ -90,6 +126,9 @@ export function Chat() {
     setDraft("");
     setError(null);
     setBusy(true);
+    // Asking a question is a request to see its answer, so re-attach to the
+    // bottom even if the reader had scrolled away.
+    setFollowing(true);
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: "user", content: text, blocks: [] },
@@ -196,7 +235,11 @@ export function Chat() {
         </span>
       </header>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-6 py-6">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="relative flex-1 space-y-4 overflow-y-auto px-6 py-6"
+      >
         {messages.length === 0 && !streaming && (
           <div className="pt-16">
             <p className="text-center text-sm text-black/40 dark:text-white/40">
@@ -221,8 +264,34 @@ export function Chat() {
           </p>
         )}
 
-        <div ref={bottomRef} />
       </div>
+
+      {/* Only while detached: a reader who has scrolled up needs to know output
+          is still arriving, and needs one click back. Without it, leaving the
+          bottom is a one-way trip until the turn ends. */}
+      {!following && (messages.length > 0 || streaming) && (
+        <div className="pointer-events-none flex justify-center px-6">
+          <button
+            type="button"
+            onClick={jumpToLatest}
+            className="pointer-events-auto -mt-2 inline-flex items-center gap-1.5 rounded-full border border-black/15 bg-white/90 px-3 py-1 text-[11px] text-black/70 shadow-sm backdrop-blur transition hover:border-black/40 hover:text-black dark:border-white/20 dark:bg-black/70 dark:text-white/70 dark:hover:border-white/50 dark:hover:text-white"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 14 14"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-3 shrink-0"
+            >
+              <path d="M7 2.5v9m0 0L3.5 8M7 11.5 10.5 8" />
+            </svg>
+            {busy ? "Still writing — jump to latest" : "Jump to latest"}
+          </button>
+        </div>
+      )}
 
       {messages.length > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-2 border-t border-black/10 px-6 pt-3 dark:border-white/15">

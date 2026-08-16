@@ -379,7 +379,7 @@ function Sidebar() {
     // Below lg the rail moves under the conversation (order-last) with a bounded
     // height, so it is reachable without pushing the chat off the first screen.
     // From lg it is the full-height left column it has always been.
-    <aside className="order-last flex max-h-72 w-full shrink-0 flex-col gap-5 overflow-y-auto border-t border-black/10 px-6 py-6 lg:order-none lg:h-dvh lg:max-h-none lg:w-72 lg:border-t-0 lg:border-r dark:border-white/15">
+    <aside className="order-last flex max-h-72 w-full shrink-0 flex-col gap-3 overflow-y-auto lg:gap-5 border-t border-black/10 px-6 py-6 lg:order-none lg:h-dvh lg:max-h-none lg:w-72 lg:border-t-0 lg:border-r dark:border-white/15">
       <Image
         src="/pixar-pops.png"
         alt="Robert MacKay"
@@ -389,7 +389,7 @@ function Sidebar() {
         // Capped. At full width this is ~290px of the rail before anything
         // else, which pushed the live agent panel below the fold on a normal
         // laptop — the reason it read as missing rather than as further down.
-        className="max-h-44 w-full rounded-xl object-cover object-top"
+        className="hidden max-h-44 w-full rounded-xl object-cover object-top lg:block"
       />
 
       <div className="space-y-1">
@@ -413,7 +413,7 @@ function Sidebar() {
         >
           github.com/notbobutah/GoReactChat
         </a>
-        <p className="leading-relaxed text-black/45 dark:text-white/45">
+        <p className="hidden leading-relaxed text-black/45 lg:block dark:text-white/45">
           This application is the working sample: a Go backend answering over
           gRPC, grounded in the résumé and the role.
         </p>
@@ -451,7 +451,7 @@ function Sidebar() {
       </div>
 
 
-      <div className="mt-auto space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40">
+      <div className="mt-auto hidden space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40 lg:block">
         <p>Go · connect-go (gRPC / gRPC-Web / Connect)</p>
         <p>Next.js · React · streaming over fetch</p>
         <p>Postgres · local embeddings · in-process vector search</p>

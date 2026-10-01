@@ -1,17 +1,15 @@
 name: deploy dev
 
-# Applies deploy/ to the dev-next namespace and restarts both rollouts, after
-# the images for that commit are on GHCR.
+# Applies deploy/ to the dev-next namespace and restarts both rollouts.
 #
-# `workflow_run` rather than a job inside `publish image` because a deploy needs
-# a cluster credential and image publishing does not — keeping them apart means
-# a pull request build never touches a workflow that can reach the cluster.
+# ⚠ MANUAL ONLY. lumi-go was undeployed from dev-next on 2026-10-01 (deployments,
+# services, ingress for rob.expona.ai, config and secrets all removed; its data is
+# archived in backups/). This workflow used to fire on every green `publish image`
+# run of main via `workflow_run`; that trigger is removed so a merge can never
+# bring the app back. Running it by hand re-deploys on purpose, and it will stop
+# at "Require the runtime secret" until lumi-go-secrets is recreated
+# (deploy/README.md).
 on:
-  workflow_run:
-    workflows: ["publish image"]
-    types: [completed]
-  # Re-apply the manifests without waiting for a build — useful when only a
-  # ConfigMap or an Ingress rule changed.
   workflow_dispatch:
 
 permissions:
@@ -24,13 +22,6 @@ env:
 
 jobs:
   deploy:
-    # Only a green build of main. A tag build publishes an image too, but this
-    # environment tracks :latest, which is a main-branch artifact.
-    if: >-
-      ${{ github.event_name == 'workflow_dispatch' ||
-          (github.event.workflow_run.conclusion == 'success' &&
-           github.event.workflow_run.event == 'push' &&
-           github.event.workflow_run.head_branch == 'main') }}
     runs-on: ubuntu-latest
 
     steps:

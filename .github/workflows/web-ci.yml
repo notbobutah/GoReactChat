@@ -1,0 +1,34 @@
+name: web ci
+
+# Fast checks for the Next.js client: lint, typecheck, test, build.
+# Human-owned workflow — agents change web/ and the npm scripts this calls,
+# never this file.
+on:
+  pull_request:
+    paths: ["web/**", ".github/workflows/web-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["web/**", ".github/workflows/web-ci.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  web-ci:
+    name: web-ci
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test --if-present
+      - run: npm run build

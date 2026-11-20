@@ -1,0 +1,23 @@
+apiVersion: agentic-pipeline/v1
+team: demo
+
+projects:
+  - id: web
+    path: web
+  - id: server
+    path: server
+
+agentDevelopment:
+  enabled: true
+  components: [web]
+  innerLoop:
+    setup: npm ci
+    check: npm run lint && npm run typecheck
+    test: npm test --if-present
+    build: npm run build
+  forbiddenPaths: [".github/**", ".agentic/**", "server/**", "deploy/**", "migrations/**", "proto/**"]
+
+checks:                      # CI check name → affected project (used by the Feedback Router)
+  web-ci: web
+  "web (Next.js client)": web
+  "lumid (Go backend)": server

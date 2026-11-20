@@ -184,6 +184,7 @@ export function PipelineView({ feedUrl }: { feedUrl: string }) {
               <AgentsPanel view={view} />
             </div>
 
+            <ChangesPanel view={view} />
             <PlanPanel view={view} />
             <EventStream events={visible} live={mode === "live"} />
           </section>
@@ -316,6 +317,8 @@ const STATUS_TONE: Record<string, string> = {
   "plan-review": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
   planning: "bg-sky-500/15 text-sky-800 dark:text-sky-300",
   implementing: "bg-violet-500/15 text-violet-800 dark:text-violet-300",
+  "in-review": "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  merged: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
   done: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
   blocked: "bg-red-500/15 text-red-800 dark:text-red-300",
   rejected: "bg-red-500/15 text-red-800 dark:text-red-300",
@@ -500,6 +503,53 @@ function AgentsPanel({ view }: { view: View }) {
   );
 }
 
+const CI_TONE: Record<string, string> = {
+  running: "animate-pulse bg-sky-500/15 text-sky-800 dark:text-sky-300",
+  success: "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300",
+  failure: "bg-red-500/15 text-red-800 dark:text-red-300",
+};
+
+/** One row per repository: the agent's PR, its CI state, fixes, review and merge. */
+function ChangesPanel({ view }: { view: View }) {
+  if (view.changes.length === 0) return null;
+  return (
+    <Panel title="Changes">
+      <ul className="space-y-3">
+        {view.changes.map((c) => (
+          <li key={c.component} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-medium">{c.repo}</span>
+            {c.url ? (
+              <a className="underline" href={c.url} target="_blank" rel="noopener noreferrer">
+                #{c.number}
+              </a>
+            ) : (
+              <span className="text-xs text-black/50 dark:text-white/50">{c.commits ? "pushing…" : "waiting to start"}</span>
+            )}
+            {c.ci && <span className={`rounded-full px-2 py-0.5 text-[11px] ${CI_TONE[c.ci]}`}>CI {c.ci}</span>}
+            {c.iterations > 0 && <span className="text-xs text-black/60 dark:text-white/60">{c.iterations} fix{c.iterations > 1 ? "es" : ""}</span>}
+            {c.merged ? (
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] text-emerald-800 dark:text-emerald-300">merged</span>
+            ) : c.ready ? (
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] text-amber-800 dark:text-amber-300">ready for review</span>
+            ) : null}
+            {c.head && <span className="font-mono text-[11px] text-black/40 dark:text-white/40">{c.head.slice(0, 7)}</span>}
+            {c.blocked && <span className="w-full text-xs text-red-700 dark:text-red-300">blocked: {c.blocked}</span>}
+          </li>
+        ))}
+      </ul>
+      {view.deployment && (
+        <p className="mt-3 text-sm">
+          Deployment:{" "}
+          <a className="underline" href={view.deployment.url} target="_blank" rel="noopener noreferrer">
+            {view.deployment.conclusion}
+          </a>
+          {view.done && " · work item complete"}
+        </p>
+      )}
+    </Panel>
+  );
+}
+
 function PlanPanel({ view }: { view: View }) {
   const [picked, setPicked] = useState<number | null>(null);
   if (view.plans.length === 0) return null;
@@ -658,7 +708,6 @@ const PRINCIPLES = [
   },
   {
     title: "The pipeline is the judge",
-    building: true,
     body: () =>
       "Every agent commit goes through the same CI as human code: lint, typecheck, tests, build. Failures come back to the agent as structured events, not raw logs, and it iterates until green or escalates to the sponsor.",
   },
@@ -701,11 +750,6 @@ function HowItWorks({ index }: { index: FeedIndex | null }) {
           <div key={pr.title} className="rounded-lg bg-black/[0.03] p-4 dark:bg-white/[0.04]">
             <h3 className="flex items-center gap-2 text-base font-medium">
               {pr.title}
-              {"building" in pr && pr.building && (
-                <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-normal text-sky-800 dark:text-sky-300">
-                  being built: cards currently stop at plan approval
-                </span>
-              )}
             </h3>
             <p className="mt-2 text-sm leading-relaxed text-black/70 dark:text-white/70">{pr.body(p?.catalogTypes ?? 0)}</p>
           </div>

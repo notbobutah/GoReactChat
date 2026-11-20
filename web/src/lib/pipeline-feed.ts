@@ -126,13 +126,13 @@ export type StageId = (typeof STAGES)[number]["id"];
 
 export function stageOf(type: string): StageId | null {
   const t = type.replace(/^ap\./, "").replace(/\.v\d+$/, "");
+  if (t === "work.completed" || t.startsWith("deployment.") || t === "changeset.merged" || t === "change.merged") return "done";
   if (/^work\.(item\.assigned|request|repos)/.test(t)) return "intake";
-  if (/^work\.plan\.(requested)$/.test(t) || t.startsWith("agent.")) return null; // follows its parent
+  if (/^work\.plan\.(requested)$/.test(t) || t.startsWith("agent.") || t.startsWith("policy.")) return null; // follows its parent
   if (/^work\.plan\.(proposed|revision|approved|rejected)/.test(t) || t.startsWith("command.")) return "approval";
-  if (t.startsWith("devsession.ready_for_review") || t.startsWith("change.review")) return "review";
-  if (t.startsWith("devsession.") || t.startsWith("changeset.created")) return "coding";
-  if (t.startsWith("pipeline.") || t.startsWith("diagnosis.") || t.startsWith("change.")) return "verify";
-  if (t === "work.completed" || t.startsWith("deployment.") || t === "changeset.merged") return "done";
+  if (t === "devsession.ready_for_review" || t === "changeset.ready" || t.startsWith("change.review")) return "review";
+  if (t.startsWith("pipeline.") || t.startsWith("diagnosis.")) return "verify";
+  if (t.startsWith("devsession.") || t.startsWith("changeset.")) return "coding";
   return null;
 }
 
@@ -160,6 +160,23 @@ export type View = {
   tasks: AgentTask[];
   costUsd: number;
   sessions: { component: string; repo: string; pathGlobs: string[] }[];
+  changes: ChangeView[];
+  deployment?: { conclusion: string; url: string };
+  done: boolean;
+};
+
+export type ChangeView = {
+  component: string;
+  repo: string;
+  number?: number;
+  url?: string;
+  head?: string;
+  commits: number;
+  iterations: number;
+  ci?: "running" | "success" | "failure";
+  ready: boolean;
+  merged: boolean;
+  blocked?: string;
 };
 
 const STATUS_BY_TYPE: Record<string, string> = {
@@ -172,14 +189,27 @@ const STATUS_BY_TYPE: Record<string, string> = {
   "ap.work.blocked.v1": "blocked",
   "ap.work.cancelled.v1": "cancelled",
   "ap.work.completed.v1": "done",
+  "ap.devsession.ready_for_review.v1": "in-review",
+  "ap.changeset.ready.v1": "in-review",
+  "ap.changeset.merged.v1": "merged",
 };
 
 /** Parses feed timestamps (UTC or offset) to epoch ms, so ordering is by instant, not by string. */
 export const ms = (t: string) => Date.parse(t);
 
 export function project(events: FeedEvent[], telemetry: Telemetry[], until: number | null): View {
-  const v: View = { status: "received", stage: "intake", plans: [], waitingOnSponsor: false, tasks: [], costUsd: 0, sessions: [] };
+  const v: View = { status: "received", stage: "intake", plans: [], waitingOnSponsor: false, tasks: [], costUsd: 0, sessions: [], changes: [], done: false };
   const tasks = new Map<string, AgentTask>();
+  const changes = new Map<string, ChangeView>();
+  const change = (component: string, repo = ""): ChangeView => {
+    let c = changes.get(component);
+    if (!c) {
+      c = { component, repo, commits: 0, iterations: 0, ready: false, merged: false };
+      changes.set(component, c);
+    }
+    if (repo) c.repo = repo;
+    return c;
+  };
   for (const e of events) {
     if (until !== null && ms(e.time) > until) break;
     v.status = STATUS_BY_TYPE[e.type] ?? v.status;
@@ -201,6 +231,47 @@ export function project(events: FeedEvent[], telemetry: Telemetry[], until: numb
         break;
       case "ap.devsession.requested.v1":
         v.sessions.push({ component: d.component as string, repo: d.repo as string, pathGlobs: (d.pathGlobs as string[]) ?? [] });
+        change(d.component as string, d.repo as string);
+        break;
+      case "ap.devsession.commit.pushed.v1": {
+        const c = change(d.component as string, d.repo as string);
+        c.commits++;
+        c.head = d.sha as string;
+        if (c.number) c.ci = "running";
+        break;
+      }
+      case "ap.devsession.change.opened.v1": {
+        const c = change(d.component as string, d.repo as string);
+        c.number = d.changeNumber as number;
+        c.url = d.url as string;
+        c.ci = "running";
+        break;
+      }
+      case "ap.pipeline.run.completed.v1": {
+        const c = change(d.component as string);
+        if (!c.head || c.head === d.headSha) c.ci = d.conclusion === "success" ? "success" : "failure";
+        break;
+      }
+      case "ap.devsession.iteration.started.v1":
+        change(d.component as string).iterations = d.iteration as number;
+        break;
+      case "ap.devsession.ready_for_review.v1":
+        change(d.component as string).ready = true;
+        break;
+      case "ap.devsession.blocked.v1":
+        change(d.component as string).blocked = `${d.reason}: ${d.detail}`;
+        break;
+      case "ap.change.merged.v1": {
+        const c = change(d.component as string);
+        c.merged = true;
+        c.url = (d.url as string) || c.url;
+        break;
+      }
+      case "ap.deployment.completed.v1":
+        v.deployment = { conclusion: d.conclusion as string, url: d.url as string };
+        break;
+      case "ap.work.completed.v1":
+        v.done = true;
         break;
       case "ap.agent.task.assigned.v1":
         tasks.set(d.taskId as string, {
@@ -231,6 +302,7 @@ export function project(events: FeedEvent[], telemetry: Telemetry[], until: numb
     }
   }
   v.tasks = [...tasks.values()];
+  v.changes = [...changes.values()];
   return v;
 }
 
@@ -294,6 +366,43 @@ export function describe(e: FeedEvent): { who: Who; text: string } | null {
       return { who: "agent", text: `Escalated to the sponsor: ${str("reason")}` };
     case "ap.work.cancelled.v1":
       return { who: "pipeline", text: `Cancelled: ${str("reason")}` };
+    case "ap.devsession.started.v1":
+      return { who: "pipeline", text: `Coding session started for ${str("repo")} on branch ${str("branch")}${d.pinSha ? `, building against ${str("pinSha").slice(0, 7)}` : ""}` };
+    case "ap.devsession.commit.pushed.v1": {
+      const kind = str("kind");
+      const what = kind === "tests" ? "Test Author's tests" : kind === "implementation" ? "the implementation" : kind === "repin" ? "a dependency re-pin" : `fix #${str("iteration")}`;
+      return { who: kind === "repin" ? "pipeline" : "agent", text: `Committed ${what} to ${str("repo")} (${str("sha").slice(0, 7)}, ${((d.files as string[]) ?? []).length} files) after scope checks` };
+    }
+    case "ap.devsession.inner_loop.completed.v1":
+      return { who: "agent", text: `Ran ${((d.commands as string[]) ?? []).length} verification commands in the sandbox: ${d.allPassing ? "all passing" : "not all passing"}` };
+    case "ap.devsession.change.opened.v1":
+      return { who: "pipeline", text: `Opened draft PR ${str("repo")}#${str("changeNumber")}` };
+    case "ap.pipeline.job.completed.v1":
+      return { who: "pipeline", text: `CI check “${str("check")}” ${str("conclusion")} on ${str("repo")}#${str("changeNumber")}` };
+    case "ap.pipeline.run.completed.v1":
+      return { who: "pipeline", text: `CI ${str("conclusion") === "success" ? "passed" : "failed"} for ${str("repo")}#${str("changeNumber")} at ${str("headSha").slice(0, 7)}` };
+    case "ap.diagnosis.completed.v1":
+      return { who: "pipeline", text: `Diagnosed the failure (${str("class")}): ${truncate(str("summary"), 140)}` };
+    case "ap.devsession.feedback.received.v1":
+      return { who: "pipeline", text: `Routed ${str("source")} feedback to the ${str("component")} coding session` };
+    case "ap.devsession.iteration.started.v1":
+      return { who: "agent", text: `Coding agent started fix #${str("iteration")} for ${str("component")}` };
+    case "ap.devsession.ready_for_review.v1":
+      return { who: "pipeline", text: `${str("repo")}#${str("changeNumber")} is green and ready for human review` };
+    case "ap.changeset.ready.v1":
+      return { who: "pipeline", text: "Every change in the changeset is green; waiting for the sponsor to review and merge" };
+    case "ap.change.review.submitted.v1":
+      return { who: "human", text: `${str("reviewer")} reviewed ${str("repo")}#${str("changeNumber")}: ${str("state").replace("_", " ")}` };
+    case "ap.change.merged.v1":
+      return { who: "human", text: `${str("mergedBy") || "The sponsor"} merged ${str("repo")}#${str("changeNumber")}` };
+    case "ap.changeset.merged.v1":
+      return { who: "pipeline", text: "All changes merged; watching the deployment" };
+    case "ap.deployment.completed.v1":
+      return { who: "pipeline", text: `Deployment to ${str("environment")} ${str("conclusion")}` };
+    case "ap.work.completed.v1":
+      return { who: "pipeline", text: `Work item complete: ${str("outcome").replace(/-/g, " ")}` };
+    case "ap.devsession.blocked.v1":
+      return { who: "pipeline", text: `${str("component")} session blocked (${str("reason")}); escalated to the sponsor` };
     default:
       return { who: "pipeline", text: e.type.replace(/^ap\./, "").replace(/\.v\d+$/, "") };
   }

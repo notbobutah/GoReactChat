@@ -108,6 +108,7 @@ export function PipelineView({ feedUrl }: { feedUrl: string }) {
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-6 py-10">
       <Header index={index} />
+      <HowItWorks index={index} />
       <ProjectLinks />
 
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">Feed unavailable: {error}</p>}
@@ -191,7 +192,6 @@ export function PipelineView({ feedUrl }: { feedUrl: string }) {
         )}
       </div>
 
-      <HowItWorks index={index} />
     </main>
   );
 }
@@ -624,29 +624,110 @@ function EventStream({ events, live }: { events: CardFile["events"]; live: boole
   );
 }
 
+const FLOW = [
+  { who: "human", label: "Card assigned" },
+  { who: "pipeline", label: "Intake checks" },
+  { who: "agent", label: "Planner reads the repos" },
+  { who: "pipeline", label: "Plan validated" },
+  { who: "human", label: "Sponsor approves" },
+  { who: "agent", label: "Tests, then code" },
+  { who: "pipeline", label: "CI on every commit" },
+  { who: "human", label: "PR review + merge" },
+] as const;
+
+const PRINCIPLES = [
+  {
+    title: "Everything is an event",
+    body: (types: number) =>
+      `Each step (an assignment, a plan, an approval, a failed test) is written to one append-only log, as one of ${types || "a fixed set of"} catalogued event types. Anything not in the catalog is rejected, which is what keeps the pipeline's scope explicit. This page, its status and its replay are all computed from that log.`,
+  },
+  {
+    title: "Deterministic handlers decide",
+    body: () =>
+      "Small handlers subscribe to events and emit new ones: intake, comment parsing, orchestration, plan approval, reporting. They are idempotent, so the whole log can be replayed without changing anything, and they decide when an agent is worth invoking at all.",
+  },
+  {
+    title: "Agents propose, policy disposes",
+    body: () =>
+      "Agents run in disposable Docker sandboxes with read-only checkouts and no GitHub credentials. Their output is a proposal, never an action: a plan must cover every acceptance criterion and stay inside an allowed set of paths before it reaches a human.",
+  },
+  {
+    title: "Humans hold three controls",
+    body: () =>
+      "The sponsoring developer assigns the card and gives guidance, approves one exact plan version (bound to its content hash, so a changed plan needs re-approval), and reviews the resulting pull request. Nothing merges without a person.",
+  },
+  {
+    title: "The pipeline is the judge",
+    building: true,
+    body: () =>
+      "Every agent commit goes through the same CI as human code: lint, typecheck, tests, build. Failures come back to the agent as structured events, not raw logs, and it iterates until green or escalates to the sponsor.",
+  },
+] as const;
+
+const FLOW_TONE: Record<Who, string> = {
+  human: "border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-200",
+  agent: "border-violet-500/40 bg-violet-500/10 text-violet-900 dark:text-violet-200",
+  pipeline: "border-black/15 bg-black/[0.04] text-black/75 dark:border-white/20 dark:bg-white/[0.06] dark:text-white/75",
+};
+
+/**
+ * The explanation a first-time visitor needs before the live view makes sense.
+ * Placed above the cards and set at reading size: it is the point of the page,
+ * not a footnote.
+ */
 function HowItWorks({ index }: { index: FeedIndex | null }) {
-  if (!index) return null;
-  const p = index.pipeline;
+  const p = index?.pipeline;
   return (
-    <footer className="space-y-2 border-t border-black/10 pt-6 text-[11px] leading-relaxed text-black/50 dark:border-white/15 dark:text-white/50">
-      <p>
-        How it works: {p.catalogTypes} catalogued event types, {p.handlers.length} handlers (
-        {p.handlers.map((h) => `${h.id} ${h.name}`).join(", ")}). Agents run in disposable Docker sandboxes with read-only checkouts and
-        no GitHub credentials; every agent output is a proposal that deterministic policy checks before anything is applied.
-      </p>
-      <p>
-        Repositories:{" "}
-        {p.components.map((c, i) => (
-          <span key={c.name}>
-            {i > 0 && ", "}
-            <a className="underline" href={`https://github.com/${c.repo}`}>
-              {c.repo}
-            </a>{" "}
-            ({c.name})
-          </span>
+    <section className="space-y-5 rounded-xl border border-black/10 p-6 dark:border-white/15">
+      <div>
+        <h2 className="text-lg font-medium">How it works</h2>
+        <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+          One card&rsquo;s journey, colour-coded by who acts: <span className="text-amber-700 dark:text-amber-300">people</span>,{" "}
+          <span className="text-violet-700 dark:text-violet-300">agents</span> or the <span className="text-black/80 dark:text-white/80">pipeline</span>.
+        </p>
+      </div>
+
+      <ol className="flex flex-wrap items-center gap-2 text-sm">
+        {FLOW.map((f, i) => (
+          <li key={f.label} className="flex items-center gap-2">
+            <span className={`rounded-lg border px-3 py-1.5 ${FLOW_TONE[f.who]}`}>{f.label}</span>
+            {i < FLOW.length - 1 && <span className="text-black/30 dark:text-white/30">→</span>}
+          </li>
         ))}
-        . This page is read-only: runs are started and approved by the sponsoring developer.
+      </ol>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {PRINCIPLES.map((pr) => (
+          <div key={pr.title} className="rounded-lg bg-black/[0.03] p-4 dark:bg-white/[0.04]">
+            <h3 className="flex items-center gap-2 text-base font-medium">
+              {pr.title}
+              {"building" in pr && pr.building && (
+                <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[11px] font-normal text-sky-800 dark:text-sky-300">
+                  being built: cards currently stop at plan approval
+                </span>
+              )}
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-black/70 dark:text-white/70">{pr.body(p?.catalogTypes ?? 0)}</p>
+          </div>
+        ))}
+      </div>
+
+      {p && p.handlers.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium">Handlers running in this deployment</h3>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {p.handlers.map((h) => (
+              <li key={h.id + h.name} className="rounded-full border border-black/15 px-3 py-1 text-xs dark:border-white/20">
+                <span className="font-mono text-black/50 dark:text-white/50">{h.id}</span> {h.name.replace(/-/g, " ")}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="text-sm text-black/60 dark:text-white/60">
+        This page is read-only: runs are started from the command line and plans are approved by the sponsoring developer, never from here.
       </p>
-    </footer>
+    </section>
   );
 }

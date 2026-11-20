@@ -108,6 +108,7 @@ export function PipelineView({ feedUrl }: { feedUrl: string }) {
   return (
     <main className="mx-auto w-full max-w-6xl space-y-8 px-6 py-10">
       <Header index={index} />
+      <ProjectLinks />
 
       {error && <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-300">Feed unavailable: {error}</p>}
 
@@ -192,6 +193,87 @@ export function PipelineView({ feedUrl }: { feedUrl: string }) {
 
       <HowItWorks index={index} />
     </main>
+  );
+}
+
+/**
+ * Where everything lives. Static on purpose: these are the fixed parts of the
+ * demo, and a visitor should be able to find the code without the feed loading.
+ */
+const PROJECT_LINKS = [
+  {
+    title: "agentic-pipeline",
+    href: "https://github.com/notbobutah/agentic-pipeline",
+    kind: "Pipeline",
+    text: "The orchestrator: event log, handlers, agent sandboxes and the CLI that runs cards, plus the full design docs.",
+  },
+  {
+    title: "Design docs",
+    href: "https://github.com/notbobutah/agentic-pipeline/tree/main/docs",
+    kind: "Docs",
+    text: "Event model, catalog, handlers, work plane and integration testing: what this page is a slice of.",
+  },
+  {
+    title: "PGDataLayer",
+    href: "https://github.com/notbobutah/PGDataLayer",
+    kind: "Target repo",
+    text: "Sample data and JSON Schemas published as an npm package. Agents write its data, validators and tests.",
+  },
+  {
+    title: "GoReactChat",
+    href: "https://github.com/notbobutah/GoReactChat",
+    kind: "Target repo",
+    text: "This site: a Go + Next.js app. Agents add pages to its web client; its CI verifies every agent commit.",
+  },
+  {
+    title: "rob.expona.ai",
+    href: "/",
+    kind: "Live site",
+    text: "The interactive résumé chat this page belongs to. Pages built by the pipeline deploy here.",
+  },
+  {
+    title: "Pipeline feed",
+    href: "https://github.com/notbobutah/agentic-pipeline/tree/feed",
+    kind: "Data",
+    text: "The JSON snapshots of the event log that this page reads. Published by the orchestrator; read-only here.",
+  },
+] as const;
+
+function ProjectLinks() {
+  return (
+    <Panel title="Project links">
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {PROJECT_LINKS.map((l) => {
+          const external = l.href.startsWith("http");
+          const body = (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{l.title}</span>
+                <span className="rounded-full bg-black/[0.06] px-2 py-0.5 text-[10px] text-black/60 dark:bg-white/10 dark:text-white/60">
+                  {l.kind}
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-black/60 dark:text-white/60">{l.text}</p>
+            </>
+          );
+          const cls =
+            "block h-full rounded-lg border border-black/10 px-3 py-2 transition hover:border-black/35 dark:border-white/15 dark:hover:border-white/40";
+          return (
+            <li key={l.title}>
+              {external ? (
+                <a href={l.href} target="_blank" rel="noopener noreferrer" className={cls}>
+                  {body}
+                </a>
+              ) : (
+                <Link href={l.href} className={cls}>
+                  {body}
+                </Link>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </Panel>
   );
 }
 

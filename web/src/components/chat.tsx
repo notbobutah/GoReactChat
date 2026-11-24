@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { NewsPanel } from "@/components/news-panel";
@@ -455,6 +456,15 @@ function Sidebar() {
         </a>
       </div>
 
+      <div className="space-y-2 text-xs">
+        <p className="font-medium text-black/70 dark:text-white/70">Films</p>
+        <Link
+          href="/videos"
+          className="text-black/60 underline decoration-black/20 underline-offset-2 hover:text-black hover:decoration-black/60 dark:text-white/60 dark:decoration-white/25 dark:hover:text-white"
+        >
+          Expona portfolio
+        </Link>
+      </div>
 
       <div className="mt-auto hidden space-y-1 text-[11px] leading-relaxed text-black/40 dark:text-white/40 lg:block">
         <p>Go · connect-go (gRPC / gRPC-Web / Connect)</p>

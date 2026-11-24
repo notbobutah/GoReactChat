@@ -34,6 +34,7 @@ import (
 	"github.com/expona-ai/lumi-go/server/internal/reference"
 	"github.com/expona-ai/lumi-go/server/internal/service"
 	"github.com/expona-ai/lumi-go/server/internal/store"
+	"github.com/expona-ai/lumi-go/server/internal/video"
 )
 
 // version is stamped at build time (-ldflags "-X main.version=…") and logged at
@@ -281,6 +282,27 @@ func run(logger *slog.Logger) error {
 			"max_turns", agent.MaxTurns, "persisted", digestStore != nil)
 	}
 
+	// --- video portfolio -----------------------------------------------------
+	// Optional. Without a bucket or keys the routes answer 503; boot never
+	// depends on the object store.
+	videoCatalog, err := video.EmbeddedCatalog()
+	if err != nil {
+		// Without the catalog, hidden videos would be listed. Serve none instead.
+		logger.Error("video catalog unreadable — disabling the portfolio", "error", err)
+		cfg.VideoS3Bucket = ""
+	}
+	videos := video.New(video.Options{
+		Endpoint:  cfg.VideoS3Endpoint,
+		Region:    cfg.VideoS3Region,
+		Bucket:    cfg.VideoS3Bucket,
+		Prefix:    cfg.VideoS3Prefix,
+		AccessKey: cfg.VideoS3AccessKey,
+		SecretKey: cfg.VideoS3SecretKey,
+		CacheTTL:  cfg.VideoCacheTTL,
+		Catalog:   videoCatalog,
+		Logger:    logger,
+	})
+
 	// --- http ----------------------------------------------------------------
 	mux := http.NewServeMux()
 	path, handler := chatv1connect.NewChatServiceHandler(
@@ -288,6 +310,7 @@ func run(logger *slog.Logger) error {
 		connect.WithInterceptors(auth.NewInterceptor(verifier)),
 	)
 	mux.Handle(path, handler)
+	videos.Register(mux)
 
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("content-type", "application/json")

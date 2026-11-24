@@ -93,6 +93,19 @@ type Config struct {
 	// NewsMaxTurns caps rounds of server-side tool use within one scan.
 	NewsMaxTurns int
 	NewsMaxItems int
+
+	// --- video portfolio ---
+	// Read-only listing of the films in object storage. Nothing is required: an
+	// unset bucket or key makes /api/videos return 503 and changes nothing else.
+	VideoS3Endpoint string
+	VideoS3Region   string
+	VideoS3Bucket   string
+	// VideoS3Prefix always ends in a slash.
+	VideoS3Prefix    string
+	VideoS3AccessKey string
+	VideoS3SecretKey string
+	// VideoCacheTTL is how long one bucket listing is served from memory.
+	VideoCacheTTL time.Duration
 }
 
 // Load reads the environment. It does not read .env files — use `make dev`,
@@ -154,6 +167,14 @@ func Load() (*Config, error) {
 		NewsTimeout:  time.Duration(envInt("NEWS_TIMEOUT_SECONDS", 240)) * time.Second,
 		NewsMaxTurns: envInt("NEWS_MAX_TURNS", 12),
 		NewsMaxItems: envInt("NEWS_MAX_ITEMS", 6),
+
+		VideoS3Endpoint:  env("VIDEO_S3_ENDPOINT", "https://us-lax-1.linodeobjects.com"),
+		VideoS3Region:    env("VIDEO_S3_REGION", "us-lax-1"),
+		VideoS3Bucket:    env("VIDEO_S3_BUCKET", ""),
+		VideoS3Prefix:    strings.TrimRight(env("VIDEO_S3_PREFIX", "videos/"), "/") + "/",
+		VideoS3AccessKey: env("VIDEO_S3_ACCESS_KEY", ""),
+		VideoS3SecretKey: env("VIDEO_S3_SECRET_KEY", ""),
+		VideoCacheTTL:    envDuration("VIDEO_CACHE_TTL", 5*time.Minute),
 	}
 
 	switch c.AuthMode {
@@ -200,6 +221,16 @@ func envInt(key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// envDuration reads a Go duration such as "90s". Invalid and non-positive
+// values fall back.
+func envDuration(key string, fallback time.Duration) time.Duration {
+	d, err := time.ParseDuration(strings.TrimSpace(os.Getenv(key)))
+	if err != nil || d <= 0 {
+		return fallback
+	}
+	return d
 }
 
 func splitList(s string) []string {

@@ -87,3 +87,13 @@ data:
   # Caps rounds of server-side tool use inside a single scan.
   NEWS_MAX_TURNS: "12"
   NEWS_MAX_ITEMS: "6"
+
+  # --- video portfolio (/api/videos) ------------------------------------------
+  # The films next-expona's cinematic renderer (mini-crew-service) uploads,
+  # public-read, to expona-images under videos/<job_id>/. Read only: the API
+  # lists and presigns; browsers play the public object URLs directly.
+  VIDEO_S3_ENDPOINT: "https://us-lax-1.linodeobjects.com"
+  VIDEO_S3_REGION: "us-lax-1"
+  VIDEO_S3_BUCKET: "expona-images"
+  VIDEO_S3_PREFIX: "videos/"
+  VIDEO_CACHE_TTL: "5m"

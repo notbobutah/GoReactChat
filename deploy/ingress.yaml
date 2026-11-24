@@ -55,6 +55,17 @@ spec:
           # Exposed deliberately: it is the one endpoint that can confirm from
           # outside the cluster that the backend — not just the page — is up.
           # It returns {"status":"ok"} and nothing else.
+          # The video portfolio API: a JSON listing and download redirects. No
+          # video bytes pass through here — players load the public object
+          # URLs and downloads 302 to a presigned link — so the 1m body limit
+          # and the stream settings above are fine as they are.
+          - path: /api/videos
+            pathType: Prefix
+            backend:
+              service:
+                name: lumi-go-api
+                port:
+                  number: 8080
           - path: /health
             pathType: Exact
             backend:
